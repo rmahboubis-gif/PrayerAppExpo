@@ -96,42 +96,41 @@ export default function App() {
         break;
     }
   };
-
-  const handlePrayerSelect = (prayer) => {
-    setSelectedPrayer(prayer);
-    setCurrentScreen('prayer');
-  };
-
 const renderExitConfirm = () => {
+  const themeStyles = getThemeStyles();
+  
   return (
     <Modal
       visible={showExitConfirm}
-      animationType="fade"
+      animationType="slide"
       transparent={true}
       onRequestClose={() => setShowExitConfirm(false)}
     >
-      <View style={styles.exitConfirmOverlay}>
-        <View style={styles.exitConfirmContainer}>
-          <Text style={styles.exitConfirmTitle}>
+      <View style={styles.settingsOverlay}>
+        <View style={[styles.settingsContainer, themeStyles.container]}>
+          <Text style={[styles.settingsTitle, themeStyles.headerTitle]}>
             خروج از برنامه
           </Text>
-          <Text style={styles.exitConfirmMessage}>
+          
+          <Text style={[styles.settingsMessage, themeStyles.menuText]}>
             آیا مطمئن هستید که می‌خواهید از برنامه خارج شوید؟
           </Text>
-          <View style={styles.exitConfirmButtons}>
+
+          <View style={styles.settingsButtons}>
             <TouchableOpacity 
-              style={[styles.exitConfirmButton, styles.exitConfirmCancel]}
+              style={[styles.settingsButton, themeStyles.cancelButton]}
               onPress={() => setShowExitConfirm(false)}
             >
-              <Text style={styles.exitConfirmCancelText}>
+              <Text style={[styles.settingsButtonText, themeStyles.buttonText]}>
                 انصراف
               </Text>
             </TouchableOpacity>
+            
             <TouchableOpacity 
-              style={[styles.exitConfirmButton, styles.exitConfirmExit]}
+              style={[styles.settingsButton, themeStyles.applyButton]}
               onPress={() => BackHandler.exitApp()}
             >
-              <Text style={styles.exitConfirmExitText}>
+              <Text style={[styles.settingsButtonText, themeStyles.buttonText]}>
                 خروج
               </Text>
             </TouchableOpacity>
@@ -141,51 +140,54 @@ const renderExitConfirm = () => {
     </Modal>
   );
 };
-  const renderAbout = () => {
-    const themeStyles = getThemeStyles();
-    
-    return (
-      <Modal
-        visible={showAbout}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowAbout(false)}
-      >
-        <View style={styles.aboutOverlay}>
-          <View style={[styles.aboutContainer, themeStyles.menuContainer]}>
-            <Text style={[styles.aboutTitle, themeStyles.menuTitle]}>درباره برنامه</Text>
-            
-            <ScrollView style={styles.aboutContent}>
-              <Text style={[styles.aboutText, themeStyles.menuText]}>
-                🌙 برنامه دعاهای معنوی
-                {"\n\n"}
-                این برنامه با هدف دسترسی آسان به دعاهای مذهبی و معنوی توسعه داده شده است.
-                {"\n\n"}
-                ✨ ویژگی‌ها:
-                • پخش صوت دعاها
-                • نمایش متن عربی و فارسی
-                • قابلیت تنظیم فونت و سایز
-                • پشتیبانی از تم‌های مختلف
-                • محیط کاربری ساده و زیبا
-                {"\n\n"}
-                📱 توسعه داده شده با:
-                React Native + Expo
-                {"\n\n"}
-                🙏 امیدواریم این برنامه برای شما مفید واقع شود.
-              </Text>
-            </ScrollView>
-            
-            <TouchableOpacity 
-              style={[styles.aboutCloseButton, themeStyles.applyButton]}
-              onPress={() => setShowAbout(false)}
-            >
-              <Text style={styles.aboutCloseText}>بستن</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    );
+  const handlePrayerSelect = (prayer) => {
+    setSelectedPrayer(prayer);
+    setCurrentScreen('prayer');
   };
+
+const renderAbout = () => {
+  return (
+    <Modal
+      visible={showAbout}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowAbout(false)}
+    >
+      <View style={styles.aboutOverlayTransparent}>
+        <View style={styles.aboutContainer}>
+          <Text style={styles.aboutTitle}>درباره برنامه</Text>
+          
+          <ScrollView style={styles.aboutContent}>
+            <Text style={styles.aboutText}>
+              🌙 برنامه دعاهای معنوی
+              {"\n\n"}
+              این برنامه با هدف دسترسی آسان به دعاهای مذهبی و معنوی توسعه داده شده است.
+              {"\n\n"}
+              ✨ ویژگی‌ها:
+              • پخش صوت دعاها
+              • نمایش متن عربی و فارسی
+              • قابلیت تنظیم فونت و سایز
+              • پشتیبانی از تم‌های مختلف
+              • محیط کاربری ساده و زیبا
+              {"\n\n"}
+              📱 توسعه داده شده با:
+              React Native + Expo
+              {"\n\n"}
+              🙏 امیدواریم این برنامه برای شما مفید واقع شود.
+            </Text>
+          </ScrollView>
+          
+          <TouchableOpacity 
+            style={styles.aboutCloseButton}
+            onPress={() => setShowAbout(false)}
+          >
+            <Text style={styles.aboutCloseText}>بستن</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
   const getThemeStyles = () => {
     const themeStyles = {
@@ -337,32 +339,32 @@ const renderExitConfirm = () => {
   );
 
   const themeStyles = getThemeStyles();
-  
   return (
-    <View style={[styles.container, themeStyles.container]}>
-      {renderHeader()}
-      <View style={styles.content}>
-        {currentScreen === 'main' && renderMainScreen()}
-        {currentScreen === 'prayer' && renderPrayerScreen()}
-      </View>
-      
-      {renderMenu()}
-      
-      {showSettings && (
-        <View style={styles.settingsOverlay}>
-          <Settings
-            visible={true}
-            onClose={() => setShowSettings(false)}
-            onSettingsChange={setSettings}
-            currentSettings={settings}
-          />
-        </View>
-      )}
-      
-      {renderAbout()}
-      {renderExitConfirm()}
+  <View style={[styles.container, themeStyles.container]}>
+    {renderHeader()}
+    <View style={styles.content}>
+      {currentScreen === 'main' && renderMainScreen()}
+      {currentScreen === 'prayer' && renderPrayerScreen()}
     </View>
-  );
+    
+    {renderMenu()}
+    
+    {showSettings && (
+      <View style={styles.settingsOverlay}>
+        <Settings
+          visible={true}
+          onClose={() => setShowSettings(false)}
+          onSettingsChange={setSettings}
+          currentSettings={settings}
+        />
+      </View>
+    )}
+    
+    {/* اولویت‌بندی Modalها */}
+    {showExitConfirm && renderExitConfirm()}
+    {showAbout && !showExitConfirm && renderAbout()}
+  </View>
+);
 }
 
 // استایل‌ها بدون تغییر می‌مونن
@@ -418,14 +420,7 @@ const styles = StyleSheet.create({
   prayerList: {
     flex: 1
   },
-  settingsOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },  
+  
   prayerItem: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -491,105 +486,92 @@ const styles = StyleSheet.create({
   prayerContainer: {
     flex: 1
   },  
-  aboutOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  aboutContainer: {
-    width: '90%',
-    maxHeight: '80%',
-    borderRadius: 15,
-    padding: 20,
-    margin: 20,
-  },
-  aboutTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 15,
-    borderBottomWidth: 1,
-    paddingBottom: 10,
-  },
-  aboutContent: {
-    flex: 1,
-    marginBottom: 15,
-  },
-  aboutText: {
-    fontSize: 16,
-    lineHeight: 25,
-    textAlign: 'right',
-    color: '#000000'
-  },
-  aboutCloseButton: {
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  aboutCloseText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },    
-  exitConfirmOverlay: {
+ 
+
+settingsOverlay: {
   flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.7)',
+  backgroundColor: 'rgba(0,0,0,0.5)',
   justifyContent: 'center',
   alignItems: 'center',
 },
-exitConfirmContainer: {
-  width: '80%',
-  backgroundColor: 'white',
+settingsContainer: {
+  width: '85%',
   borderRadius: 15,
   padding: 25,
+  maxHeight: '40%',
+},
+settingsTitle: {
+  fontSize: 22,
+  fontWeight: 'bold',
+  textAlign: 'center',
+  marginBottom: 20,
+},
+settingsMessage: {
+  fontSize: 16,
+  textAlign: 'center',
+  marginBottom: 30,
+  lineHeight: 24,
+},
+settingsButtons: {
+  flexDirection: 'row-reverse',
+  justifyContent: 'space-between',
+  gap: 12,
+},
+settingsButton: {
+  flex: 1,
+  padding: 15,
+  borderRadius: 8,
   alignItems: 'center',
+},
+settingsButtonText: {
+  fontSize: 16,
+  fontWeight: 'bold',
+},
+aboutOverlayTransparent: {
+  flex: 1,
+  backgroundColor: 'transparent', // کاملاً شفاف
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+aboutContainer: {
+  width: '90%',
+  maxHeight: '80%',
+  backgroundColor: 'white',
+  borderRadius: 15,
+  padding: 20,
+  margin: 20,
   shadowColor: '#000',
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.25,
   shadowRadius: 3.84,
   elevation: 5,
 },
-exitConfirmTitle: {
+aboutTitle: {
   fontSize: 20,
   fontWeight: 'bold',
+  textAlign: 'center',
   marginBottom: 15,
-  color: '#2c3e50',
-  textAlign: 'center',
+  borderBottomWidth: 1,
+  paddingBottom: 10,
+  color: '#000',
 },
-exitConfirmMessage: {
-  fontSize: 16,
-  textAlign: 'center',
-  marginBottom: 25,
-  lineHeight: 24,
-  color: '#34495e',
-},
-exitConfirmButtons: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  width: '100%',
-  gap: 10,
-},
-exitConfirmButton: {
+aboutContent: {
   flex: 1,
-  padding: 15,
-  borderRadius: 10,
-  alignItems: 'center',
-  justifyContent: 'center',
-  minHeight: 50,
+  marginBottom: 15,
 },
-exitConfirmCancel: {
-  backgroundColor: '#3498db', // آبی روشن
-},
-exitConfirmExit: {
-  backgroundColor: '#e74c3c', // قرمز
-},
-exitConfirmCancelText: {
-  color: 'white',
-  fontWeight: 'bold',
+aboutText: {
   fontSize: 16,
+  lineHeight: 25,
+  textAlign: 'right',
+  color: '#000',
 },
-exitConfirmExitText: {
+aboutCloseButton: {
+  padding: 12,
+  borderRadius: 8,
+  alignItems: 'center',
+  backgroundColor: '#3498db',
+},
+aboutCloseText: {
   color: 'white',
   fontWeight: 'bold',
   fontSize: 16,
