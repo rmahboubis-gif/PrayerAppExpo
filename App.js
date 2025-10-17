@@ -127,14 +127,14 @@ const renderExitConfirm = () => {
                 انصراف
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.exitConfirmButton, styles.exitConfirmExit, themeStyles.cancelButton]}
-              onPress={() => BackHandler.exitApp()}
-            >
-              <Text style={[styles.exitConfirmButtonText, styles.exitConfirmExitText]}>
-                خروج
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity 
+  style={[styles.exitConfirmButton, styles.exitConfirmExit, {backgroundColor: '#e74c3c'}]}
+  onPress={() => BackHandler.exitApp()}
+>
+  <Text style={[styles.exitConfirmButtonText, {color: 'white'}]}>
+    خروج
+  </Text>
+</TouchableOpacity>
           </View>
         </View>
       </View>
@@ -241,42 +241,41 @@ const renderAbout = () => {
     return themeStyles[settings.theme] || themeStyles.light;
   };
 
-  const renderMenu = () => {
-    const themeStyles = getThemeStyles();
+ const renderMenu = () => {
+  const themeStyles = getThemeStyles();
 
-    return (
-      <Modal
-        visible={showMenu}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeMenu}
-      >
-        <View style={styles.menuOverlay}>
-          <TouchableOpacity
-            style={styles.menuOverlayTouchable}
-            activeOpacity={1}
-            onPress={closeMenu}
-          />
-          <View style={[styles.menuContainer, themeStyles.menuContainer]}>
-            <ScrollView style={styles.menuScroll}>
-              <Text style={[styles.menuTitle, themeStyles.menuTitle]}>منوی برنامه</Text>
-              {menuItems.map(item => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.menuItem, themeStyles.menuItem]}
-                  onPress={() => handleMenuSelect(item.id)}
-                >
-                  <Text style={styles.menuIcon}>{item.icon}</Text>
-                  <Text style={[styles.menuText, themeStyles.menuText]}>{item.title}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+  return (
+    <Modal
+      visible={showMenu}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={closeMenu}
+    >
+      <View style={styles.menuOverlay}>
+        <TouchableOpacity
+          style={styles.menuOverlayTouchable}
+          activeOpacity={1}
+          onPress={closeMenu}
+        />
+        <View style={[styles.menuContainer, themeStyles.menuContainer]}>
+          <ScrollView style={styles.menuScroll}>
+            <Text style={[styles.menuTitle, themeStyles.menuTitle]}>منوی برنامه</Text>
+            {menuItems.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuItem, themeStyles.menuItem]}
+                onPress={() => handleMenuSelect(item.id)}
+              >
+                <Text style={styles.menuIcon}>{item.icon}</Text>
+                <Text style={[styles.menuText, themeStyles.menuText]}>{item.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-      </Modal>
-    );
-  };
-
+      </View>
+    </Modal>
+  );
+};
   const renderHeader = () => {
     const themeStyles = getThemeStyles();
 
@@ -304,7 +303,7 @@ const renderAbout = () => {
         settings={settings} 
         currentPrayerId={selectedPrayer?.id || 'p1'}
         onSoundRefReady={setGlobalSoundRef}
-      />
+     />
     </View>
   );
 
@@ -338,7 +337,8 @@ const renderAbout = () => {
         settings={settings} 
         currentPrayerId={selectedPrayer?.id || 'p1'}
         soundRef={globalSoundRef}
-      />
+        />
+
     </View>
   );
 
@@ -349,20 +349,22 @@ const renderAbout = () => {
         onClose={handleSettingsClose}
         onSettingsChange={setSettings}
         currentSettings={settings}
-      />
+        />
+     
     </View>
   );
 
   const themeStyles = getThemeStyles();
-
 return (
   <View style={[styles.container, themeStyles.container]}>
     {renderHeader()}
     <View style={styles.content}>
       {currentScreen === 'main' && renderMainScreen()}
       {currentScreen === 'prayer' && renderPrayerScreen()}
-    </View>    {/* منو overlay */}
-    {renderMenu()}    {/* تنظیمات overlay */}
+    </View>
+    
+    {renderMenu()}
+    
     {showSettings && (
       <View style={styles.settingsOverlay}>
         <Settings
@@ -372,11 +374,13 @@ return (
           currentSettings={settings}
         />
       </View>
-    )}        
+    )}
+    
     {renderAbout()}
     {renderExitConfirm()}
   </View>
 );
+
 }
 
 // استایل‌ها بدون تغییر می‌مونن
@@ -534,6 +538,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 25,
     textAlign: 'right',
+    color: '#000000'
   },
   aboutCloseButton: {
     padding: 12,
@@ -544,54 +549,60 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
-  },  
-    exitConfirmOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  exitConfirmContainer: {
-    width: '80%',
-    borderRadius: 15,
-    padding: 20,
-    alignItems: 'center',
-  },
-  exitConfirmTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  exitConfirmMessage: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 24,
-  },
-  exitConfirmButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  exitConfirmButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  exitConfirmCancel: {    // از themeStyles.option استفاده میشه
-  },
-  exitConfirmExit: {    // از themeStyles.cancelButton استفاده میشه
-  },
-  exitConfirmButtonText: {
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  exitConfirmExitText: {
-    color: 'white',
-  },
-  settingsContainer: {
+  },    
+exitConfirmOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+exitConfirmContainer: {
+  width: '80%',
+  backgroundColor: 'white',
+  borderRadius: 15,
+  padding: 20,
+  alignItems: 'center',
+},
+exitConfirmTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 10,
+  color: '#000',
+},
+exitConfirmMessage: {
+  fontSize: 16,
+  textAlign: 'center',
+  marginBottom: 20,
+  lineHeight: 24,
+  color: '#000',
+},
+exitConfirmButtons: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  width: '100%',
+},
+exitConfirmButton: {
+  flex: 1,
+  padding: 12,
+  borderRadius: 8,
+  alignItems: 'center',
+  marginHorizontal: 5,
+},
+exitConfirmCancel: {
+  backgroundColor: '#95a5a6',
+},
+exitConfirmExit: {
+  backgroundColor: '#e74c3c',
+},
+exitConfirmButtonText: {
+  fontWeight: 'bold',
+  fontSize: 16,
+  color: '#000',
+},
+exitConfirmExitText: {
+  color: 'white',
+},
+settingsContainer: {
     flex: 1
   }
 });
