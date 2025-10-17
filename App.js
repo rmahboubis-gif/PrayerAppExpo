@@ -24,43 +24,40 @@ export default function App() {
     persianBold: false
   });
 
-React.useEffect(() => {
-  const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-    // اول چک کن اگر overlayها باز هستن
-    if (showAbout) {
-      setShowAbout(false);
-      return true;
-    }
-    if (showSettings) {
-      setShowSettings(false);
-      return true;
-    }
-    if (showMenu) {
-      setShowMenu(false);
-      return true;
-    }
-    if (showExitConfirm) {
-      setShowExitConfirm(false);
-      return true;
-    }
-
-    // اگر overlay بسته بود، صفحات اصلی رو چک کن
-    if (currentScreen !== 'main') {
-      setCurrentScreen('main');
-      setSelectedPrayer(null);
-      if (globalSoundRef) {
-        globalSoundRef.stopAsync();
+  React.useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (showAbout) {
+        setShowAbout(false);
+        return true;
       }
+      if (showSettings) {
+        setShowSettings(false);
+        return true;
+      }
+      if (showMenu) {
+        setShowMenu(false);
+        return true;
+      }
+      if (showExitConfirm) {
+        setShowExitConfirm(false);
+        return true;
+      }
+
+      if (currentScreen !== 'main') {
+        setCurrentScreen('main');
+        setSelectedPrayer(null);
+        if (globalSoundRef) {
+          globalSoundRef.stopAsync();
+        }
+        return true;
+      }
+
+      setShowExitConfirm(true);
       return true;
-    }
+    });
 
-    // اگر در صفحه اصلی بودی، confirm نمایش بده
-    setShowExitConfirm(true);
-    return true;
-  });
-
-  return () => backHandler.remove();
-}, [currentScreen, showMenu, showSettings, showAbout, showExitConfirm, globalSoundRef]);
+    return () => backHandler.remove();
+  }, [currentScreen, showMenu, showSettings, showAbout, showExitConfirm, globalSoundRef]);
 
   const openMenu = () => {
     setShowMenu(true);
@@ -79,30 +76,33 @@ React.useEffect(() => {
     { id: 'contact', title: 'ارتباط با سازنده', icon: '📞' },
   ];
 
-
-const handleMenuSelect = (itemId) => {
-  closeMenu();
-  switch(itemId) {
-    case 'main':
-      setCurrentScreen('main');
-      setSelectedPrayer(null);
-      if (globalSoundRef) {
-        globalSoundRef.stopAsync();
-      }
-      break;
-    case 'settings':
-      setShowSettings(true);
-      break;
+  const handleMenuSelect = (itemId) => {
+    closeMenu();
+    switch(itemId) {
+      case 'main':
+        setCurrentScreen('main');
+        setSelectedPrayer(null);
+        if (globalSoundRef) {
+          globalSoundRef.stopAsync();
+        }
+        break;
+      case 'settings':
+        setShowSettings(true);
+        break;
       case 'about':
-      setShowAbout(true);
-      break;
-    default:
-      break;
-  }
-};
+        setShowAbout(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handlePrayerSelect = (prayer) => {
+    setSelectedPrayer(prayer);
+    setCurrentScreen('prayer');
+  };
+
 const renderExitConfirm = () => {
-  const themeStyles = getThemeStyles();
-  
   return (
     <Modal
       visible={showExitConfirm}
@@ -111,85 +111,80 @@ const renderExitConfirm = () => {
       onRequestClose={() => setShowExitConfirm(false)}
     >
       <View style={styles.exitConfirmOverlay}>
-        <View style={[styles.exitConfirmContainer, themeStyles.menuContainer]}>
-          <Text style={[styles.exitConfirmTitle, themeStyles.menuTitle]}>
+        <View style={styles.exitConfirmContainer}>
+          <Text style={styles.exitConfirmTitle}>
             خروج از برنامه
           </Text>
-          <Text style={[styles.exitConfirmMessage, themeStyles.menuText]}>
+          <Text style={styles.exitConfirmMessage}>
             آیا مطمئن هستید که می‌خواهید از برنامه خارج شوید؟
           </Text>
           <View style={styles.exitConfirmButtons}>
             <TouchableOpacity 
-              style={[styles.exitConfirmButton, styles.exitConfirmCancel, themeStyles.option]}
+              style={[styles.exitConfirmButton, styles.exitConfirmCancel]}
               onPress={() => setShowExitConfirm(false)}
             >
-              <Text style={[styles.exitConfirmButtonText, themeStyles.optionText]}>
+              <Text style={styles.exitConfirmCancelText}>
                 انصراف
               </Text>
             </TouchableOpacity>
-                <TouchableOpacity 
-  style={[styles.exitConfirmButton, styles.exitConfirmExit, {backgroundColor: '#e74c3c'}]}
-  onPress={() => BackHandler.exitApp()}
->
-  <Text style={[styles.exitConfirmButtonText, {color: 'white'}]}>
-    خروج
-  </Text>
-</TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.exitConfirmButton, styles.exitConfirmExit]}
+              onPress={() => BackHandler.exitApp()}
+            >
+              <Text style={styles.exitConfirmExitText}>
+                خروج
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
     </Modal>
   );
 };
-const renderAbout = () => {
-  const themeStyles = getThemeStyles();
-  
-  return (
-    <Modal
-      visible={showAbout}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowAbout(false)}
-    >
-      <View style={styles.aboutOverlay}>
-        <View style={[styles.aboutContainer, themeStyles.menuContainer]}>
-          <Text style={[styles.aboutTitle, themeStyles.menuTitle]}>درباره برنامه</Text>
-          
-          <ScrollView style={styles.aboutContent}>
-            <Text style={[styles.aboutText, themeStyles.menuText]}>
-              🌙 برنامه دعاهای معنوی
-              {"\n\n"}
-              این برنامه با هدف دسترسی آسان به دعاهای مذهبی و معنوی توسعه داده شده است.
-              {"\n\n"}
-              ✨ ویژگی‌ها:
-              • پخش صوت دعاها
-              • نمایش متن عربی و فارسی
-              • قابلیت تنظیم فونت و سایز
-              • پشتیبانی از تم‌های مختلف
-              • محیط کاربری ساده و زیبا
-              {"\n\n"}
-              📱 توسعه داده شده با:
-              React Native + Expo
-              {"\n\n"}
-              🙏 امیدواریم این برنامه برای شما مفید واقع شود.
-            </Text>
-          </ScrollView>
-          
-          <TouchableOpacity 
-            style={[styles.aboutCloseButton, themeStyles.applyButton]}
-            onPress={() => setShowAbout(false)}
-          >
-            <Text style={styles.aboutCloseText}>بستن</Text>
-          </TouchableOpacity>
+  const renderAbout = () => {
+    const themeStyles = getThemeStyles();
+    
+    return (
+      <Modal
+        visible={showAbout}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAbout(false)}
+      >
+        <View style={styles.aboutOverlay}>
+          <View style={[styles.aboutContainer, themeStyles.menuContainer]}>
+            <Text style={[styles.aboutTitle, themeStyles.menuTitle]}>درباره برنامه</Text>
+            
+            <ScrollView style={styles.aboutContent}>
+              <Text style={[styles.aboutText, themeStyles.menuText]}>
+                🌙 برنامه دعاهای معنوی
+                {"\n\n"}
+                این برنامه با هدف دسترسی آسان به دعاهای مذهبی و معنوی توسعه داده شده است.
+                {"\n\n"}
+                ✨ ویژگی‌ها:
+                • پخش صوت دعاها
+                • نمایش متن عربی و فارسی
+                • قابلیت تنظیم فونت و سایز
+                • پشتیبانی از تم‌های مختلف
+                • محیط کاربری ساده و زیبا
+                {"\n\n"}
+                📱 توسعه داده شده با:
+                React Native + Expo
+                {"\n\n"}
+                🙏 امیدواریم این برنامه برای شما مفید واقع شود.
+              </Text>
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={[styles.aboutCloseButton, themeStyles.applyButton]}
+              onPress={() => setShowAbout(false)}
+            >
+              <Text style={styles.aboutCloseText}>بستن</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </Modal>
-  );
-};
-
-  const handlePrayerSelect = (prayer) => {
-    setSelectedPrayer(prayer);
-    setCurrentScreen('prayer');
+      </Modal>
+    );
   };
 
   const getThemeStyles = () => {
@@ -241,41 +236,42 @@ const renderAbout = () => {
     return themeStyles[settings.theme] || themeStyles.light;
   };
 
- const renderMenu = () => {
-  const themeStyles = getThemeStyles();
+  const renderMenu = () => {
+    const themeStyles = getThemeStyles();
 
-  return (
-    <Modal
-      visible={showMenu}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={closeMenu}
-    >
-      <View style={styles.menuOverlay}>
-        <TouchableOpacity
-          style={styles.menuOverlayTouchable}
-          activeOpacity={1}
-          onPress={closeMenu}
-        />
-        <View style={[styles.menuContainer, themeStyles.menuContainer]}>
-          <ScrollView style={styles.menuScroll}>
-            <Text style={[styles.menuTitle, themeStyles.menuTitle]}>منوی برنامه</Text>
-            {menuItems.map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.menuItem, themeStyles.menuItem]}
-                onPress={() => handleMenuSelect(item.id)}
-              >
-                <Text style={styles.menuIcon}>{item.icon}</Text>
-                <Text style={[styles.menuText, themeStyles.menuText]}>{item.title}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+    return (
+      <Modal
+        visible={showMenu}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeMenu}
+      >
+        <View style={styles.menuOverlay}>
+          <TouchableOpacity
+            style={styles.menuOverlayTouchable}
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+          <View style={[styles.menuContainer, themeStyles.menuContainer]}>
+            <ScrollView style={styles.menuScroll}>
+              <Text style={[styles.menuTitle, themeStyles.menuTitle]}>منوی برنامه</Text>
+              {menuItems.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.menuItem, themeStyles.menuItem]}
+                  onPress={() => handleMenuSelect(item.id)}
+                >
+                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                  <Text style={[styles.menuText, themeStyles.menuText]}>{item.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
-  );
-};
+      </Modal>
+    );
+  };
+
   const renderHeader = () => {
     const themeStyles = getThemeStyles();
 
@@ -288,7 +284,6 @@ const renderAbout = () => {
         <Text style={[styles.headerTitle, themeStyles.headerTitle]}>
           {currentScreen === 'main' ? 'دعاهای معنوی' :
            currentScreen === 'prayer' ? selectedPrayer?.title :
-           currentScreen === 'settings' ? 'تنظیمات' :
            'برنامه دعا'}
         </Text>
 
@@ -303,7 +298,7 @@ const renderAbout = () => {
         settings={settings} 
         currentPrayerId={selectedPrayer?.id || 'p1'}
         onSoundRefReady={setGlobalSoundRef}
-     />
+      />
     </View>
   );
 
@@ -337,50 +332,37 @@ const renderAbout = () => {
         settings={settings} 
         currentPrayerId={selectedPrayer?.id || 'p1'}
         soundRef={globalSoundRef}
-        />
-
-    </View>
-  );
-
-  const renderSettingsScreen = () => (
-    <View style={[styles.settingsContainer, getThemeStyles().container]}>
-      <Settings
-        visible={true}
-        onClose={handleSettingsClose}
-        onSettingsChange={setSettings}
-        currentSettings={settings}
-        />
-     
+      />
     </View>
   );
 
   const themeStyles = getThemeStyles();
-return (
-  <View style={[styles.container, themeStyles.container]}>
-    {renderHeader()}
-    <View style={styles.content}>
-      {currentScreen === 'main' && renderMainScreen()}
-      {currentScreen === 'prayer' && renderPrayerScreen()}
-    </View>
-    
-    {renderMenu()}
-    
-    {showSettings && (
-      <View style={styles.settingsOverlay}>
-        <Settings
-          visible={true}
-          onClose={() => setShowSettings(false)}
-          onSettingsChange={setSettings}
-          currentSettings={settings}
-        />
+  
+  return (
+    <View style={[styles.container, themeStyles.container]}>
+      {renderHeader()}
+      <View style={styles.content}>
+        {currentScreen === 'main' && renderMainScreen()}
+        {currentScreen === 'prayer' && renderPrayerScreen()}
       </View>
-    )}
-    
-    {renderAbout()}
-    {renderExitConfirm()}
-  </View>
-);
-
+      
+      {renderMenu()}
+      
+      {showSettings && (
+        <View style={styles.settingsOverlay}>
+          <Settings
+            visible={true}
+            onClose={() => setShowSettings(false)}
+            onSettingsChange={setSettings}
+            currentSettings={settings}
+          />
+        </View>
+      )}
+      
+      {renderAbout()}
+      {renderExitConfirm()}
+    </View>
+  );
 }
 
 // استایل‌ها بدون تغییر می‌مونن
@@ -436,13 +418,13 @@ const styles = StyleSheet.create({
   prayerList: {
     flex: 1
   },
-    settingsOverlay: {
+  settingsOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)', // پس‌زمینه نیمه شفاف
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },  
   prayerItem: {
     justifyContent: 'center',
@@ -509,7 +491,7 @@ const styles = StyleSheet.create({
   prayerContainer: {
     flex: 1
   },  
-    aboutOverlay: {
+  aboutOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
@@ -550,9 +532,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },    
-exitConfirmOverlay: {
+  exitConfirmOverlay: {
   flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.5)',
+  backgroundColor: 'rgba(0,0,0,0.7)',
   justifyContent: 'center',
   alignItems: 'center',
 },
@@ -560,49 +542,59 @@ exitConfirmContainer: {
   width: '80%',
   backgroundColor: 'white',
   borderRadius: 15,
-  padding: 20,
+  padding: 25,
   alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  elevation: 5,
 },
 exitConfirmTitle: {
-  fontSize: 18,
+  fontSize: 20,
   fontWeight: 'bold',
-  marginBottom: 10,
-  color: '#000',
+  marginBottom: 15,
+  color: '#2c3e50',
+  textAlign: 'center',
 },
 exitConfirmMessage: {
   fontSize: 16,
   textAlign: 'center',
-  marginBottom: 20,
+  marginBottom: 25,
   lineHeight: 24,
-  color: '#000',
+  color: '#34495e',
 },
 exitConfirmButtons: {
   flexDirection: 'row',
   justifyContent: 'space-between',
   width: '100%',
+  gap: 10,
 },
 exitConfirmButton: {
   flex: 1,
-  padding: 12,
-  borderRadius: 8,
+  padding: 15,
+  borderRadius: 10,
   alignItems: 'center',
-  marginHorizontal: 5,
+  justifyContent: 'center',
+  minHeight: 50,
 },
 exitConfirmCancel: {
-  backgroundColor: '#95a5a6',
+  backgroundColor: '#3498db', // آبی روشن
 },
 exitConfirmExit: {
-  backgroundColor: '#e74c3c',
+  backgroundColor: '#e74c3c', // قرمز
 },
-exitConfirmButtonText: {
+exitConfirmCancelText: {
+  color: 'white',
   fontWeight: 'bold',
   fontSize: 16,
-  color: '#000',
 },
 exitConfirmExitText: {
   color: 'white',
+  fontWeight: 'bold',
+  fontSize: 16,
 },
-settingsContainer: {
-    flex: 1
+  exitConfirmExitText: {
+    color: 'white',
   }
 });
