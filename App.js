@@ -9,7 +9,8 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('main');
   const [selectedPrayer, setSelectedPrayer] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
-  const [previousScreen, setPreviousScreen] = useState('main');
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAbout, setShowAbout] = useState(false); 
   const [globalSoundRef, setGlobalSoundRef] = useState(null);
 
   const [settings, setSettings] = useState({
@@ -58,29 +59,77 @@ export default function App() {
     { id: 'contact', title: 'ارتباط با سازنده', icon: '📞' },
   ];
 
-  const handleMenuSelect = (itemId) => {
-    closeMenu();
-    switch(itemId) {
-      case 'main':
-        setCurrentScreen('main');
-        setSelectedPrayer(null);
-        break;
-      case 'settings':
-        setPreviousScreen(currentScreen);
-        setCurrentScreen('settings');
-        break;
-      default:
-        break;
-    }
-  };
+
+const handleMenuSelect = (itemId) => {
+  closeMenu();
+  switch(itemId) {
+    case 'main':
+      setCurrentScreen('main');
+      setSelectedPrayer(null);
+      if (globalSoundRef) {
+        globalSoundRef.stopAsync();
+      }
+      break;
+    case 'settings':
+      setShowSettings(true);
+      break;
+      case 'about':
+      setShowAbout(true);
+      break;
+    default:
+      break;
+  }
+};
+
+const renderAbout = () => {
+  const themeStyles = getThemeStyles();
+  
+  return (
+    <Modal
+      visible={showAbout}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowAbout(false)}
+    >
+      <View style={styles.aboutOverlay}>
+        <View style={[styles.aboutContainer, themeStyles.menuContainer]}>
+          <Text style={[styles.aboutTitle, themeStyles.menuTitle]}>درباره برنامه</Text>
+          
+          <ScrollView style={styles.aboutContent}>
+            <Text style={[styles.aboutText, themeStyles.menuText]}>
+              🌙 برنامه دعاهای معنوی
+              {"\n\n"}
+              این برنامه با هدف دسترسی آسان به دعاهای مذهبی و معنوی توسعه داده شده است.
+              {"\n\n"}
+              ✨ ویژگی‌ها:
+              • پخش صوت دعاها
+              • نمایش متن عربی و فارسی
+              • قابلیت تنظیم فونت و سایز
+              • پشتیبانی از تم‌های مختلف
+              • محیط کاربری ساده و زیبا
+              {"\n\n"}
+              📱 توسعه داده شده با:
+              React Native + Expo
+              {"\n\n"}
+              🙏 امیدواریم این برنامه برای شما مفید واقع شود.
+            </Text>
+          </ScrollView>
+          
+          <TouchableOpacity 
+            style={[styles.aboutCloseButton, themeStyles.applyButton]}
+            onPress={() => setShowAbout(false)}
+          >
+            <Text style={styles.aboutCloseText}>بستن</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
   const handlePrayerSelect = (prayer) => {
     setSelectedPrayer(prayer);
     setCurrentScreen('prayer');
-  };
-
-  const handleSettingsClose = () => {
-    setCurrentScreen(previousScreen);
   };
 
   const getThemeStyles = () => {
@@ -246,17 +295,28 @@ export default function App() {
 
   const themeStyles = getThemeStyles();
 
-  return (
-    <View style={[styles.container, themeStyles.container]}>
-      {renderHeader()}
-      <View style={styles.content}>
-        {currentScreen === 'main' && renderMainScreen()}
-        {currentScreen === 'prayer' && renderPrayerScreen()}
-        {currentScreen === 'settings' && renderSettingsScreen()}
+return (
+  <View style={[styles.container, themeStyles.container]}>
+    {renderHeader()}
+    <View style={styles.content}>
+      {currentScreen === 'main' && renderMainScreen()}
+      {currentScreen === 'prayer' && renderPrayerScreen()}
+    </View>    {/* منو overlay */}
+    {renderMenu()}    {/* تنظیمات overlay */}
+    {showSettings && (
+      <View style={styles.settingsOverlay}>
+        <Settings
+          visible={true}
+          onClose={() => setShowSettings(false)}
+          onSettingsChange={setSettings}
+          currentSettings={settings}
+        />
       </View>
-      {renderMenu()}
-    </View>
-  );
+    )}
+        {/* درباره ما overlay */}
+    {renderAbout()}
+  </View>
+);
 }
 
 // استایل‌ها بدون تغییر می‌مونن
@@ -312,6 +372,14 @@ const styles = StyleSheet.create({
   prayerList: {
     flex: 1
   },
+    settingsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)', // پس‌زمینه نیمه شفاف
+  },  
   prayerItem: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -376,7 +444,47 @@ const styles = StyleSheet.create({
   },
   prayerContainer: {
     flex: 1
+  },  
+    aboutOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  aboutContainer: {
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 15,
+    padding: 20,
+    margin: 20,
+  },
+  aboutTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    paddingBottom: 10,
+  },
+  aboutContent: {
+    flex: 1,
+    marginBottom: 15,
+  },
+  aboutText: {
+    fontSize: 16,
+    lineHeight: 25,
+    textAlign: 'right',
+  },
+  aboutCloseButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  aboutCloseText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },  
   settingsContainer: {
     flex: 1
   }
