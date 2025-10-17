@@ -12,6 +12,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false); 
   const [globalSoundRef, setGlobalSoundRef] = useState(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const [settings, setSettings] = useState({
     fontFamily: 'System',
@@ -23,24 +24,43 @@ export default function App() {
     persianBold: false
   });
 
-  React.useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (currentScreen !== 'main') {
-        setCurrentScreen('main');
-        setSelectedPrayer(null);
-        return true;
-      }
-      if (showMenu) {
-        setShowMenu(false);
-        return true;
-      }
-
-      BackHandler.exitApp();
+React.useEffect(() => {
+  const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+    // اول چک کن اگر overlayها باز هستن
+    if (showAbout) {
+      setShowAbout(false);
       return true;
-    });
+    }
+    if (showSettings) {
+      setShowSettings(false);
+      return true;
+    }
+    if (showMenu) {
+      setShowMenu(false);
+      return true;
+    }
+    if (showExitConfirm) {
+      setShowExitConfirm(false);
+      return true;
+    }
 
-    return () => backHandler.remove();
-  }, [currentScreen, showMenu]);
+    // اگر overlay بسته بود، صفحات اصلی رو چک کن
+    if (currentScreen !== 'main') {
+      setCurrentScreen('main');
+      setSelectedPrayer(null);
+      if (globalSoundRef) {
+        globalSoundRef.stopAsync();
+      }
+      return true;
+    }
+
+    // اگر در صفحه اصلی بودی، confirm نمایش بده
+    setShowExitConfirm(true);
+    return true;
+  });
+
+  return () => backHandler.remove();
+}, [currentScreen, showMenu, showSettings, showAbout, showExitConfirm, globalSoundRef]);
 
   const openMenu = () => {
     setShowMenu(true);
@@ -80,7 +100,47 @@ const handleMenuSelect = (itemId) => {
       break;
   }
 };
-
+const renderExitConfirm = () => {
+  const themeStyles = getThemeStyles();
+  
+  return (
+    <Modal
+      visible={showExitConfirm}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={() => setShowExitConfirm(false)}
+    >
+      <View style={styles.exitConfirmOverlay}>
+        <View style={[styles.exitConfirmContainer, themeStyles.menuContainer]}>
+          <Text style={[styles.exitConfirmTitle, themeStyles.menuTitle]}>
+            خروج از برنامه
+          </Text>
+          <Text style={[styles.exitConfirmMessage, themeStyles.menuText]}>
+            آیا مطمئن هستید که می‌خواهید از برنامه خارج شوید؟
+          </Text>
+          <View style={styles.exitConfirmButtons}>
+            <TouchableOpacity 
+              style={[styles.exitConfirmButton, styles.exitConfirmCancel, themeStyles.option]}
+              onPress={() => setShowExitConfirm(false)}
+            >
+              <Text style={[styles.exitConfirmButtonText, themeStyles.optionText]}>
+                انصراف
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.exitConfirmButton, styles.exitConfirmExit, themeStyles.cancelButton]}
+              onPress={() => BackHandler.exitApp()}
+            >
+              <Text style={[styles.exitConfirmButtonText, styles.exitConfirmExitText]}>
+                خروج
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 const renderAbout = () => {
   const themeStyles = getThemeStyles();
   
@@ -312,9 +372,9 @@ return (
           currentSettings={settings}
         />
       </View>
-    )}
-        {/* درباره ما overlay */}
+    )}        
     {renderAbout()}
+    {renderExitConfirm()}
   </View>
 );
 }
@@ -485,6 +545,52 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },  
+    exitConfirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exitConfirmContainer: {
+    width: '80%',
+    borderRadius: 15,
+    padding: 20,
+    alignItems: 'center',
+  },
+  exitConfirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  exitConfirmMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  exitConfirmButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  exitConfirmButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  exitConfirmCancel: {    // از themeStyles.option استفاده میشه
+  },
+  exitConfirmExit: {    // از themeStyles.cancelButton استفاده میشه
+  },
+  exitConfirmButtonText: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  exitConfirmExitText: {
+    color: 'white',
+  },
   settingsContainer: {
     flex: 1
   }
