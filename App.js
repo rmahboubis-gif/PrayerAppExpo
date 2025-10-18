@@ -4,6 +4,8 @@ import PrayerDisplay from './src/components/PrayerDisplay';
 import Settings from './src/components/Settings';
 import VoicePlayer from './src/components/VoicePlayer';
 import { getAllPrayers } from './src/components/PrayerManager';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('main');
@@ -13,6 +15,27 @@ export default function App() {
   const [showAbout, setShowAbout] = useState(false); 
   const [globalSoundRef, setGlobalSoundRef] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+const exportTimestampsSimple = async () => {
+  try {
+    const timestampFile = `${FileSystem.documentDirectory}prayers/p1/timestamps.json`;
+    const fileInfo = await FileSystem.getInfoAsync(timestampFile);
+    
+    if (fileInfo.exists) {
+      // استفاده از Sharing برای export فایل
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(timestampFile, {
+          mimeType: 'application/json',
+          dialogTitle: 'ذخیره فایل تایم‌استامپ'
+        });
+      }
+    } else {
+      console.log('❌ فایل تایم‌استامپ وجود ندارد');
+    }
+  } catch (error) {
+    console.error('❌ خطا:', error);
+  }
+};
 
   const [settings, setSettings] = useState({
     fontFamily: 'System',
@@ -72,6 +95,7 @@ export default function App() {
   const menuItems = [
     { id: 'main', title: 'صفحه اصلی', icon: '🏠' },
     { id: 'settings', title: 'تنظیمات', icon: '⚙️' },
+    { id: 'export_simple', title: 'خروجی فایل تایم‌استامپ', icon: '📤' },
     { id: 'about', title: 'درباره برنامه', icon: 'ℹ️' },
     { id: 'contact', title: 'ارتباط با سازنده', icon: '📞' },
   ];
@@ -88,6 +112,9 @@ export default function App() {
         break;
       case 'settings':
         setShowSettings(true);
+        break;
+     case 'export_simple':
+        exportTimestampsSimple();
         break;
       case 'about':
         setShowAbout(true);
@@ -580,3 +607,4 @@ aboutCloseText: {
     color: 'white',
   }
 });
+

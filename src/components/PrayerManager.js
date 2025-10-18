@@ -2,6 +2,8 @@
 import p1Content from '../assets/prayers/p1/content.js';
 import p1Audio from '../assets/prayers/p1/audio.mp3';
 
+import p2Content from '../assets/prayers/p2/content.js';
+import p2Audio from '../assets/prayers/p2/audio.mp3';
 
 export const PRAYERS = {
   'p1': {
@@ -11,15 +13,15 @@ export const PRAYERS = {
     audioFile: p1Audio,
     contentFile: p1Content,
     timestampsFile: 'prayers/p1/timestamps.json'
-  },/*
+  },
   'p2': {
     id: 'p2',
     title: 'مناجات شعبانیه',
     description: 'مناجات امام علی (ع) در ماه شعبان',
-    audioFile: require('../assets/prayers/p2/audio.mp3'),
-    contentFile: require('../assets/prayers/p2/content.js'),
+    audioFile: p2Audio,
+    contentFile: p2Content,
     timestampsFile: 'p2/timestamps.json'
-  },
+  },/*
   'p3': {
     id: 'p3',
     title: 'دعای عرفه',

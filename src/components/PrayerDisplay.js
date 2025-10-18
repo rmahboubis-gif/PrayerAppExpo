@@ -61,7 +61,7 @@ const TimeStampManager = {
       // ذخیره فایل
       await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(existingData, null, 2));
       
-      console.log(`✅ تایم‌استمپ ثبت شد: ${prayerId} - بخش ${sectionIndex} - زمان: ${position}ms`);
+      //console.log(`✅ تایم‌استمپ ثبت شد: ${prayerId} - بخش ${sectionIndex} - زمان: ${position}ms`);
       return true;
     } catch (error) {
       console.error('Error saving timestamp:', error);
@@ -109,42 +109,60 @@ const PrayerDisplay = ({ settings, currentPrayerId = 'p1', soundRef }) => {
     }
   }, [currentPrayerId]);
 
-  const loadPrayerContent = () => {
-    try {
-      setIsLoading(true);
-      const prayer = getPrayerById(currentPrayerId);
-      const content = prayer.contentFile;
-      
-      // اگر content یک تابع است (default export) آن را فراخوانی کن
-      const prayerContent = typeof content === 'function' ? content() : content;
-      
-      const sections = prayerContent.split('◎').filter(section => section.trim());
-      const parsedData = sections.map((section, index) => {
-        const lines = section.trim().split('\n').filter(line => line.trim());
-        return {
-          sectionIndex: index,
-          arabic: lines[0] || '',
-          persian: lines[1] || ''
-        };
-      }).filter(item => item.arabic && item.persian);
 
-      setPrayerData(parsedData);
-    } catch (error) {
-      console.error('Error loading prayer content:', error);
-      Alert.alert('خطا', 'مشکلی در بارگذاری متن دعا پیش آمد');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const loadTimestamps = async () => {
-    try {
-      const stamps = await TimeStampManager.getTimeStamps(currentPrayerId);
-      setTimestamps(stamps);
-    } catch (error) {
-      console.error('Error loading timestamps:', error);
+
+
+const loadPrayerContent = () => {
+  try {
+    setIsLoading(true);
+    const prayer = getPrayerById(currentPrayerId);
+    const content = prayer.contentFile;
+
+    // 🔽 دیباگ اضافه کن
+    //console.log('🔍 DEBUG loadPrayerContent:');
+    //console.log('prayerId:', currentPrayerId);
+    //console.log('prayer:', prayer);
+    //console.log('content type:', typeof content);
+    //console.log('content value:', content);
+    //console.log('is function:', typeof content === 'function');
+    
+    // اگر تابع هست، فراخوانی کن
+    const prayerContent = typeof content === 'function' ? content() : content;
+    //console.log('prayerContent type:', typeof prayerContent);
+    //console.log('prayerContent value:', prayerContent);
+
+    if (!prayerContent || typeof prayerContent !== 'string') {
+      console.error('❌ prayerContent is not a string:', prayerContent);
+      Alert.alert('خطا', 'متن دعا به درستی بارگذاری نشد');
+      return;
     }
-  };
+
+    const sections = prayerContent.split('◎').filter(section => section.trim());
+    console.log('sections count:', sections.length);
+    
+    const parsedData = sections.map((section, index) => {
+      const lines = section.trim().split('\n').filter(line => line.trim());
+      return {
+        sectionIndex: index,
+        arabic: lines[0] || '',
+        persian: lines[1] || ''
+      };
+    }).filter(item => item.arabic && item.persian);
+
+    //console.log('parsedData:', parsedData);
+    setPrayerData(parsedData);
+  } catch (error) {
+    console.error('Error loading prayer content:', error);
+    Alert.alert('خطا', 'مشکلی در بارگذاری متن دعا پیش آمد');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+
+
 
   // تابع جدید برای ثبت تایم‌استمپ در حالت توسعه
   const recordTimestamp = async (sectionIndex) => {
