@@ -16,26 +16,30 @@ export default function App() {
   const [globalSoundRef, setGlobalSoundRef] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
-const exportTimestampsSimple = async (selectedPrayer) => {
+const exportTimestampsSimple = async () => {
   try {
-  console.log('🔍 selectedPrayer:', selectedPrayer);
-  console.log('🔍 currentScreen:', currentScreen);
-    const prayerId = selectedPrayer?.id || 'p1';
+  const prayerId = currentScreen === 'prayer' ? (selectedPrayer?.id || 'p1') : 'p1';    
+    console.log('🔍 prayerId برای export:', prayerId);
+    console.log('🔍 currentScreen:', currentScreen);    
     const timestampFile = `${FileSystem.documentDirectory}prayers/${prayerId}/timestamps.json`;
-    console.log('📤 درحال اشتراک‌گذاری فایل:', timestampFile); 
-    const fileInfo = await FileSystem.getInfoAsync(timestampFile);    
+    console.log('📤 درحال اشتراک‌گذاری فایل:', timestampFile);    
+    const fileInfo = await FileSystem.getInfoAsync(timestampFile);
     if (fileInfo.exists) {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(timestampFile, {
           mimeType: 'application/json',
-          dialogTitle: 'ذخیره فایل تایم‌استامپ'
+          dialogTitle: `ذخیره فایل تایماستامپ - ${prayerId}`
         });
-      }
+      } else {
+        Alert.alert('خطا', 'قابلیت اشتراک‌گذاری در دسترس نیست');
+        }
     } else {
-      console.log('❌ فایل تایم‌استامپ وجود ندارد');
+      Alert.alert('اطلاع', `فایل تایماستامپ برای دعای ${prayerId} وجود ندارد`);
+      console.log('❌ فایل تایماستامپ وجود ندارد:', timestampFile);
     }
   } catch (error) {
-    console.error('❌ خطا:', error);
+    console.error('❌ خطا در export:', error);
+    Alert.alert('خطا', 'مشکلی در اشتراک‌گذاری فایل پیش آمد');
   }
 };
 
