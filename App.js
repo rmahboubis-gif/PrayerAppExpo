@@ -95,7 +95,7 @@ const exportTimestampsSimple = async () => {
   const menuItems = [
     { id: 'main', title: 'صفحه اصلی', icon: '🏠' },
     { id: 'settings', title: 'تنظیمات', icon: '⚙️' },
-    { id: 'export_simple', title: 'خروجی فایل تایم‌استامپ', icon: '📤' },
+    { id: 'export_simple', title: 'خروجی فایل تایم‌استامپ', icon: '🙏'},//'📤' },
     { id: 'about', title: 'درباره برنامه', icon: 'ℹ️' },
     { id: 'contact', title: 'ارتباط با سازنده', icon: '📞' },
   ];
