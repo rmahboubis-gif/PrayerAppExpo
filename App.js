@@ -18,7 +18,7 @@ export default function App() {
 
 const exportTimestampsSimple = async () => {
   try {
-    const timestampFile = `${FileSystem.documentDirectory}prayers/p1/timestamps.json`;
+    const timestampFile = `${FileSystem.documentDirectory}prayers/${prayerId}/timestamps.json`;
     const fileInfo = await FileSystem.getInfoAsync(timestampFile);
     
     if (fileInfo.exists) {
@@ -93,7 +93,7 @@ const exportTimestampsSimple = async () => {
   const prayers = getAllPrayers();
 
   const menuItems = [
-    { id: 'main', title: 'صفحه اصلی', icon: '🙏'}, //'🏠' },
+    { id: 'main', title: 'صفحه اصلی', icon:'🏠' },
     { id: 'settings', title: 'تنظیمات', icon: '⚙️' },
     { id: 'export_simple', title: 'خروجی فایل تایم‌استامپ', icon: '📤' },
     { id: 'about', title: 'درباره برنامه', icon: 'ℹ️' },
@@ -114,7 +114,10 @@ const exportTimestampsSimple = async () => {
         setShowSettings(true);
         break;
      case 'export_simple':
-        exportTimestampsSimple();
+        if (selectedPrayer) {
+            exportTimestampsSimple(selectedPrayer.id);
+        } else {
+             Alert.alert('اطلاع', 'لطفاً اول یک دعا انتخاب کنید');}
         break;
       case 'about':
         setShowAbout(true);
