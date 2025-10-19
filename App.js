@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Modal, BackHandler } from 'react-native';
 import PrayerDisplay from './src/components/PrayerDisplay';
 import Settings from './src/components/Settings';
 import VoicePlayer from './src/components/VoicePlayer';
@@ -21,10 +20,9 @@ const exportTimestampsSimple = async (selectedPrayer) => {
   try {
     const prayerId = selectedPrayer?.id || 'p1';
     const timestampFile = `${FileSystem.documentDirectory}prayers/${prayerId}/timestamps.json`;
-    const fileInfo = await FileSystem.getInfoAsync(timestampFile);
-    
+    console.log('📤 درحال اشتراک‌گذاری فایل:', timestampFile); 
+    const fileInfo = await FileSystem.getInfoAsync(timestampFile);    
     if (fileInfo.exists) {
-      // استفاده از Sharing برای export فایل
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(timestampFile, {
           mimeType: 'application/json',

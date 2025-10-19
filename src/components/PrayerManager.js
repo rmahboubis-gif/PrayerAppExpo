@@ -1,7 +1,6 @@
 // src/components/PrayerManager.js
 import p1Content from '../assets/prayers/p1/content.js';
 import p1Audio from '../assets/prayers/p1/audio.mp3';
-
 import p2Content from '../assets/prayers/p2/content.js';
 import p2Audio from '../assets/prayers/p2/audio.mp3';
 
@@ -73,7 +72,6 @@ export const addPrayer = (prayerId, title, description, audioPath, contentPath) 
     timestampsFile: `${prayerId}/timestamps.json`
   };
 };
-
 // تابع برای حذف دعا
 export const removePrayer = (prayerId) => {
   delete PRAYERS[prayerId];

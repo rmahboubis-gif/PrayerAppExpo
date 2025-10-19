@@ -3,13 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getPrayerById } from './PrayerManager';
-
 // حالت توسعه - موقع انتشار به false تغییر بده
 const IS_DEVELOPER_MODE = true;
-
 // مدیریت تایم‌استمپ - مستقیم در همین فایل
-
-
 // در PrayerDisplay.js - بخش TimeStampManager
 const TimeStampManager = {
   async saveTimeStamp(prayerId, sectionIndex, position, arabicText, persianText) {
@@ -17,11 +13,9 @@ const TimeStampManager = {
       const prayer = getPrayerById(prayerId);
       const fileName = `prayers/${prayerId}/timestamps.json`;
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-
       // ایجاد پوشه اگر وجود ندارد
       const dir = `${FileSystem.documentDirectory}prayers/${prayerId}`;
-      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-      
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });      
       // خواندن فایل موجود
       let existingData = [];
       try {
@@ -33,12 +27,10 @@ const TimeStampManager = {
       } catch (error) {
         console.log('Creating new timestamp file');
       }
-
       // بررسی آیا برای این sectionIndex قبلاً تایم‌استمپ ثبت شده
       const existingIndex = existingData.findIndex(item => item.sectionIndex === sectionIndex);
-
       if (existingIndex !== -1) {
-        // آپدیت تایم‌استمپ موجود
+      // آپدیت تایم‌استمپ موجود
         existingData[existingIndex] = {
           sectionIndex,
           startTime: position,
@@ -54,13 +46,10 @@ const TimeStampManager = {
           persian: persianText
         });
       }
-
       // مرتب کردن بر اساس sectionIndex
       existingData.sort((a, b) => a.sectionIndex - b.sectionIndex);
-
       // ذخیره فایل
-      await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(existingData, null, 2));
-      
+      await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(existingData, null, 2));      
       //console.log(`✅ تایم‌استمپ ثبت شد: ${prayerId} - بخش ${sectionIndex} - زمان: ${position}ms`);
       return true;
     } catch (error) {
@@ -69,7 +58,6 @@ const TimeStampManager = {
       return false;
     }
   },
-
   async getTimeStamps(prayerId) {
     try {
       const fileName = `prayers/${prayerId}/timestamps.json`;
@@ -94,11 +82,6 @@ const PrayerDisplay = ({ settings, currentPrayerId = 'p1', soundRef }) => {
   const [timestamps, setTimestamps] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef(null);
-
-
-
-
-
 
   useEffect(() => {
     if (currentPrayerId) {
@@ -129,9 +112,6 @@ const loadPrayerContent = () => {
     
     // اگر تابع هست، فراخوانی کن
     const prayerContent = typeof content === 'function' ? content() : content;
-    //console.log('prayerContent type:', typeof prayerContent);
-    //console.log('prayerContent value:', prayerContent);
-
     if (!prayerContent || typeof prayerContent !== 'string') {
       console.error('❌ prayerContent is not a string:', prayerContent);
       Alert.alert('خطا', 'متن دعا به درستی بارگذاری نشد');
@@ -139,8 +119,7 @@ const loadPrayerContent = () => {
     }
 
     const sections = prayerContent.split('◎').filter(section => section.trim());
-    console.log('sections count:', sections.length);
-    
+    console.log('sections count:', sections.length);    
     const parsedData = sections.map((section, index) => {
       const lines = section.trim().split('\n').filter(line => line.trim());
       return {
