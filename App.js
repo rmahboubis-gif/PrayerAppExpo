@@ -18,6 +18,8 @@ export default function App() {
 
 const exportTimestampsSimple = async (selectedPrayer) => {
   try {
+  console.log('🔍 selectedPrayer:', selectedPrayer);
+  console.log('🔍 currentScreen:', currentScreen);
     const prayerId = selectedPrayer?.id || 'p1';
     const timestampFile = `${FileSystem.documentDirectory}prayers/${prayerId}/timestamps.json`;
     console.log('📤 درحال اشتراک‌گذاری فایل:', timestampFile); 
