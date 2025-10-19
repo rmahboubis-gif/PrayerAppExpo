@@ -6,6 +6,7 @@ import VoicePlayer from './src/components/VoicePlayer';
 import { getAllPrayers } from './src/components/PrayerManager';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Modal, BackHandler, Alert } from 'react-native';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('main');
@@ -16,8 +17,9 @@ export default function App() {
   const [globalSoundRef, setGlobalSoundRef] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
-const exportTimestampsSimple = async () => {
+const exportTimestampsSimple = async (selectedPrayer) => {
   try {
+    const prayerId = selectedPrayer?.id || 'p1';
     const timestampFile = `${FileSystem.documentDirectory}prayers/${prayerId}/timestamps.json`;
     const fileInfo = await FileSystem.getInfoAsync(timestampFile);
     
