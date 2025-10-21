@@ -18,7 +18,7 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
   const [isRecordingMode, setIsRecordingMode] = useState(false);
   const progressBarRef = useRef(null);
 
-  const speedOptions = [1.0, 1.25, 1.5];
+  const speedOptions = [0.75, 1.0, 2.5];
 
   useEffect(() => {
     setupAudio();

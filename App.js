@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState , useEffect } from 'react';
 import PrayerDisplay from './src/components/PrayerDisplay';
 import Settings from './src/components/Settings';
 import VoicePlayer from './src/components/VoicePlayer';
 import { getAllPrayers } from './src/components/PrayerManager';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Modal, BackHandler, Alert } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Modal, BackHandler, Alert, Animated } from 'react-native';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('main');
@@ -15,7 +15,8 @@ export default function App() {
   const [showAbout, setShowAbout] = useState(false); 
   const [globalSoundRef, setGlobalSoundRef] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-
+  const [isSyncMode, setIsSyncMode] = useState(false);
+  const [menuAnim] = useState(new Animated.Value(300));
 const exportTimestampsSimple = async () => {
   try {
   const prayerId = currentScreen === 'prayer' ? (selectedPrayer?.id || 'p1') : 'p1';    
@@ -54,6 +55,8 @@ const exportTimestampsSimple = async () => {
   });
 
   React.useEffect(() => {
+      // این useEffect جدید رو بعد از BackHandler اضافه کنید
+
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (showAbout) {
         setShowAbout(false);
@@ -88,6 +91,29 @@ const exportTimestampsSimple = async () => {
     return () => backHandler.remove();
   }, [currentScreen, showMenu, showSettings, showAbout, showExitConfirm, globalSoundRef]);
 
+// این useEffect جدید رو بعد از BackHandler اضافه کنید
+useEffect(() => {
+  if (showMenu) {
+    // منو باز میشه - از راست میاد
+    Animated.spring(menuAnim, {
+      toValue: 0,
+      tension: 50,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  } else {
+    // منو بسته میشه - به راست میره
+    Animated.spring(menuAnim, {
+      toValue: 300,
+      tension: 50,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  }
+}, [showMenu, menuAnim]); // فقط به showMenu و menuAnim وابسته است
+
+
+
   const openMenu = () => {
     setShowMenu(true);
   };
@@ -103,7 +129,8 @@ const exportTimestampsSimple = async () => {
     { id: 'settings', title: 'تنظیمات', icon: '⚙️' },
     { id: 'export_simple', title: 'خروجی فایل تایم‌استامپ', icon: '📤' },
     { id: 'about', title: 'درباره برنامه', icon: 'ℹ️' },
-    { id: 'contact', title: 'ارتباط با سازنده', icon: '📞' },
+    { id: 'sync_mode', title: isSyncMode ? '✅ حالت پخش همگام' : 'حالت پخش همگام', icon: '🔗' },
+  { id: 'contact', title: 'ارتباط با سازنده', icon: '📞' },
   ];
 
   const handleMenuSelect = (itemId) => {
@@ -125,6 +152,14 @@ const exportTimestampsSimple = async () => {
         } else {
              Alert.alert('اطلاع', 'لطفاً اول یک دعا انتخاب کنید');}
         break;
+     case 'sync_mode':
+ 	 setIsSyncMode(!isSyncMode);
+ 	 Alert.alert(
+	    'حالت پخش همگام',
+    	isSyncMode ? 'حالت پخش همگام غیرفعال شد' : 'حالت پخش همگام فعال شد\nاکنون با کلیک روی متن، صوت از زمان ذخیره شده پخش می‌شود.',
+    	[{ text: 'متوجه شدم' }]
+  	);
+ 	 break;
       case 'about':
         setShowAbout(true);
         break;
@@ -274,41 +309,41 @@ const renderAbout = () => {
     return themeStyles[settings.theme] || themeStyles.light;
   };
 
-  const renderMenu = () => {
-    const themeStyles = getThemeStyles();
+const renderMenu = () => {
+  const themeStyles = getThemeStyles();
 
-    return (
-      <Modal
-        visible={showMenu}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeMenu}
-      >
-        <View style={styles.menuOverlay}>
-          <TouchableOpacity
-            style={styles.menuOverlayTouchable}
-            activeOpacity={1}
-            onPress={closeMenu}
-          />
-          <View style={[styles.menuContainer, themeStyles.menuContainer]}>
-            <ScrollView style={styles.menuScroll}>
-              <Text style={[styles.menuTitle, themeStyles.menuTitle]}>منوی برنامه</Text>
-              {menuItems.map(item => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.menuItem, themeStyles.menuItem]}
-                  onPress={() => handleMenuSelect(item.id)}
-                >
-                  <Text style={styles.menuIcon}>{item.icon}</Text>
-                  <Text style={[styles.menuText, themeStyles.menuText]}>{item.title}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+  return (
+    <Modal
+      visible={showMenu}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={closeMenu}
+    >
+      <View style={styles.menuOverlayLeft}>
+        <TouchableOpacity
+          style={styles.menuOverlayTouchable}
+          activeOpacity={1}
+          onPress={closeMenu}
+        />
+        <View style={[styles.menuContainerLeft, themeStyles.menuContainer]}>
+          <ScrollView style={styles.menuScroll}>
+            <Text style={[styles.menuTitle, themeStyles.menuTitle]}>منوی برنامه</Text>
+            {menuItems.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuItem, themeStyles.menuItem]}
+                onPress={() => handleMenuSelect(item.id)}
+              >
+                <Text style={styles.menuIcon}>{item.icon}</Text>
+                <Text style={[styles.menuText, themeStyles.menuText]}>{item.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-      </Modal>
-    );
-  };
+      </View>
+    </Modal>
+  );
+};
 
   const renderHeader = () => {
     const themeStyles = getThemeStyles();
@@ -362,18 +397,17 @@ const renderAbout = () => {
       </View>
     );
   };
-
-  const renderPrayerScreen = () => (
-    <View style={styles.prayerContainer}>
-      {renderPrayerHeader()}
-      <PrayerDisplay 
-        settings={settings} 
-        currentPrayerId={selectedPrayer?.id || 'p1'}
-        soundRef={globalSoundRef}
-      />
-    </View>
-  );
-
+const renderPrayerScreen = () => (
+  <View style={styles.prayerContainer}>
+    {renderPrayerHeader()}
+    <PrayerDisplay
+      settings={settings}
+      currentPrayerId={selectedPrayer?.id || 'p1'}
+      soundRef={globalSoundRef}
+      isSyncMode={isSyncMode} // 🔽 این خط اضافه شود
+    />
+  </View>
+);
   const themeStyles = getThemeStyles();
   return (
   <View style={[styles.container, themeStyles.container]}>
@@ -482,43 +516,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  menuOverlay: {
-    flex: 1,
-    flexDirection: 'row-reverse',
-  },
-  menuOverlayTouchable: {
-    flex: 1,
-  },
-  menuContainer: {
-    width: 280,
-    height: '100%',
-  },
-  menuScroll: {
-    flex: 1,
-    paddingTop: 60
-  },
-  menuTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    padding: 15,
-    borderBottomWidth: 1,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-  },
-  menuIcon: {
-    fontSize: 16,
-    marginRight: 10
-  },
-  menuText: {
-    fontSize: 16,
-  },
+
+menuOverlayTouchable: {
+  flex: 1,
+},
+menuOverlayLeft: {
+  flex: 1,
+  flexDirection: 'row',
+  backgroundColor: 'rgba(0,0,0,0.5)',
+},
+menuContainerLeft: {
+  width: 280,
+  height: '100%',
+  position: 'absolute',
+  left: 0, // 🔽 مجبورش کن از چپ بیاد
+  top: 0,
+},
+menuOverlayFade: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+menuContainerFade: {
+  width: 280,
+  height: '80%',
+  borderRadius: 15,
+  padding: 20,
+},
+menuScroll: {
+  flex: 1,
+},
+menuTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  textAlign: 'center',
+  marginBottom: 20,
+  padding: 15,
+  borderBottomWidth: 1,
+  borderBottomColor: '#e0e0e0',
+},
+menuItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  padding: 15,
+  paddingHorizontal: 20,
+  borderBottomWidth: 1,
+  borderBottomColor: '#f0f0f0',
+},
+menuIcon: {
+  fontSize: 16,
+  marginRight: 10,
+  width: 20,
+  textAlign: 'center',
+},
+menuText: {
+  fontSize: 16,
+},
+
   prayerContainer: {
     flex: 1
   },  
