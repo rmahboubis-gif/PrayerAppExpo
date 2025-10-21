@@ -6,6 +6,7 @@ import { getAllPrayers } from './src/components/PrayerManager';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Modal, BackHandler, Alert, Animated } from 'react-native';
+import { SettingsManager } from './src/components/SettingsManager';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('main');
@@ -44,15 +45,34 @@ const exportTimestampsSimple = async () => {
   }
 };
 
-  const [settings, setSettings] = useState({
-    fontFamily: 'System',
-    theme: 'light',
-    arabicSize: 22,
-    persianSize: 16,
-    lineHeight: 1.8,
-    arabicBold: true,
-    persianBold: false
-  });
+
+const [settings, setSettings] = useState({
+  fontFamily: 'System',
+  theme: 'light',
+  arabicSize: 22,
+  persianSize: 16,
+  lineHeight: 1.8,
+  arabicBold: true,
+  persianBold: false,
+  isSyncMode: true
+});
+
+useEffect(() => {
+  loadSettings();
+}, []);
+
+const loadSettings = async () => {
+  const savedSettings = await SettingsManager.loadSettings();
+  if (savedSettings) {
+    setSettings(savedSettings);
+  }
+};
+
+// موقع تغییر تنظیمات ذخیره کن
+const handleSettingsChange = (newSettings) => {
+  setSettings(newSettings);
+  SettingsManager.saveSettings(newSettings);
+};
 
   React.useEffect(() => {
       // این useEffect جدید رو بعد از BackHandler اضافه کنید
@@ -129,7 +149,7 @@ useEffect(() => {
     { id: 'settings', title: 'تنظیمات', icon: '⚙️' },
     { id: 'export_simple', title: 'خروجی فایل تایم‌استامپ', icon: '📤' },
     { id: 'about', title: 'درباره برنامه', icon: 'ℹ️' },
-    { id: 'sync_mode', title: isSyncMode ? '✅ حالت پخش همگام' : 'حالت پخش همگام', icon: '🔗' },
+    //{ id: 'sync_mode', title: isSyncMode ? '✅ حالت پخش همگام' : 'حالت پخش همگام', icon: '🔗' },
   { id: 'contact', title: 'ارتباط با سازنده', icon: '📞' },
   ];
 
@@ -152,14 +172,14 @@ useEffect(() => {
         } else {
              Alert.alert('اطلاع', 'لطفاً اول یک دعا انتخاب کنید');}
         break;
-     case 'sync_mode':
+    /* case 'sync_mode':
  	 setIsSyncMode(!isSyncMode);
  	 Alert.alert(
 	    'حالت پخش همگام',
     	isSyncMode ? 'حالت پخش همگام غیرفعال شد' : 'حالت پخش همگام فعال شد\nاکنون با کلیک روی متن، صوت از زمان ذخیره شده پخش می‌شود.',
     	[{ text: 'متوجه شدم' }]
   	);
- 	 break;
+ 	 break;*/
       case 'about':
         setShowAbout(true);
         break;
@@ -224,10 +244,10 @@ const renderAbout = () => {
       transparent={true}
       onRequestClose={() => setShowAbout(false)}
     >
-      <View style={styles.aboutOverlayTransparent}>
+      <View style={styles.aboutOverlay}>
         <View style={styles.aboutContainer}>
           <Text style={styles.aboutTitle}>درباره برنامه</Text>
-          
+
           <ScrollView style={styles.aboutContent}>
             <Text style={styles.aboutText}>
               🌙 برنامه دعاهای معنوی
@@ -245,10 +265,15 @@ const renderAbout = () => {
               React Native + Expo
               {"\n\n"}
               🙏 امیدواریم این برنامه برای شما مفید واقع شود.
+              {"\n\n"}
+              📧 برای ارتباط با توسعه‌دهنده:
+              example@email.com
+              {"\n\n"}
+              🔄 نسخه: ۱.۰.۰
             </Text>
           </ScrollView>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.aboutCloseButton}
             onPress={() => setShowAbout(false)}
           >
@@ -259,7 +284,6 @@ const renderAbout = () => {
     </Modal>
   );
 };
-
   const getThemeStyles = () => {
     const themeStyles = {
       light: {
@@ -397,6 +421,7 @@ const renderMenu = () => {
       </View>
     );
   };
+
 const renderPrayerScreen = () => (
   <View style={styles.prayerContainer}>
     {renderPrayerHeader()}
@@ -404,10 +429,11 @@ const renderPrayerScreen = () => (
       settings={settings}
       currentPrayerId={selectedPrayer?.id || 'p1'}
       soundRef={globalSoundRef}
-      isSyncMode={isSyncMode} // 🔽 این خط اضافه شود
+      isSyncMode={settings.isSyncMode} // 🔽 از تنظیمات بگیر
     />
   </View>
 );
+
   const themeStyles = getThemeStyles();
   return (
   <View style={[styles.container, themeStyles.container]}>
@@ -624,18 +650,23 @@ aboutOverlayTransparent: {
   justifyContent: 'center',
   alignItems: 'center',
 },
+aboutOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 20,
+},
 aboutContainer: {
   width: '90%',
-  maxHeight: '80%',
+  height: '80%', // 🔽 ارتفاع بیشتر
   backgroundColor: 'white',
   borderRadius: 15,
   padding: 20,
-  margin: 20,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-  elevation: 5,
+},
+aboutContent: {
+  flex: 1,
+  marginBottom: 15,
 },
 aboutTitle: {
   fontSize: 20,
@@ -645,10 +676,6 @@ aboutTitle: {
   borderBottomWidth: 1,
   paddingBottom: 10,
   color: '#000',
-},
-aboutContent: {
-  flex: 1,
-  marginBottom: 15,
 },
 aboutText: {
   fontSize: 16,

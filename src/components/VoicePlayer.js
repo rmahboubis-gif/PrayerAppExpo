@@ -300,92 +300,57 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
 
   const themeStyles = getThemeStyles();
 
-  return (
-    <View style={[styles.container, themeStyles.container]}>
-      {/* اطلاعات دعای فعلی */}
-      <View style={styles.prayerInfoRow}>
-        <Text style={[styles.prayerInfo, themeStyles.prayerInfo]}>
-          📖 {getPrayerById(currentPrayerId).title}
-        </Text>
+return (
+  <View style={[styles.container, themeStyles.container]}>
+    {/* ❌ حذف: اطلاعات دعای فعلی */}
+    
+    {/* ردیف بالا: اعداد و دکمه‌ها */}
+    <View style={styles.topRow}>
+      <Text style={[styles.timeText, themeStyles.timeText]}>{formatTime(position)}</Text>
+
+      <View style={styles.buttonsContainer}>
+        {/* دکمه عقب ۱۰ ثانیه */}
+        <TouchableOpacity style={[styles.seekButton, themeStyles.seekButton]} onPress={seekBackward}>
+          <Text style={styles.seekButtonText}>⏪</Text>
+        </TouchableOpacity>
+
+        {/* دکمه تغییر سرعت */}
+        <TouchableOpacity style={[styles.speedButton, themeStyles.speedButton]} onPress={cyclePlaybackRate}>
+          <Text style={styles.speedButtonText}>{playbackRate}x</Text>
+        </TouchableOpacity>
+
+        {/* دکمه پلی/پاز */}
+        <TouchableOpacity style={[styles.playButton, themeStyles.playButton]} onPress={togglePlayPause}>
+          <Text style={styles.playIcon}>{isPlaying ? '❚❚' : '▶'}</Text>
+        </TouchableOpacity>
+
+        {/* دکمه جلو ۱۰ ثانیه */}
+        <TouchableOpacity style={[styles.seekButton, themeStyles.seekButton]} onPress={seekForward}>
+          <Text style={styles.seekButtonText}>⏩</Text>
+        </TouchableOpacity>
+
+        {/* دکمه ریست */}
+        <TouchableOpacity style={[styles.resetButton, themeStyles.resetButton]} onPress={resetAudio}>
+          <Text style={styles.resetButtonText}>↺</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* ردیف بالا: اعداد و دکمه‌ها */}
-      <View style={styles.topRow}>
-        <Text style={[styles.timeText, themeStyles.timeText]}>{formatTime(position)}</Text>
+      <Text style={[styles.timeText, themeStyles.timeText]}>{formatTime(duration)}</Text>
+    </View>
 
-        <View style={styles.buttonsContainer}>
-          {/* دکمه عقب ۱۰ ثانیه */}
-          <TouchableOpacity
-            style={[styles.seekButton, themeStyles.seekButton]}
-            onPress={seekBackward}
-          >
-            <Text style={styles.seekButtonText}>⏪</Text>
-          </TouchableOpacity>
-
-          {/* دکمه تغییر سرعت */}
-          <TouchableOpacity
-            style={[styles.speedButton, themeStyles.speedButton]}
-            onPress={cyclePlaybackRate}
-          >
-            <Text style={styles.speedButtonText}>{playbackRate}x</Text>
-          </TouchableOpacity>
-
-          {/* دکمه پلی/پاز */}
-          <TouchableOpacity 
-            style={[styles.playButton, themeStyles.playButton]} 
-            onPress={togglePlayPause}
-          >
-            <Text style={styles.playIcon}>
-              {isPlaying ? '❚❚' : '▶'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* دکمه جلو ۱۰ ثانیه */}
-          <TouchableOpacity
-            style={[styles.seekButton, themeStyles.seekButton]}
-            onPress={seekForward}
-          >
-            <Text style={styles.seekButtonText}>⏩</Text>
-          </TouchableOpacity>
-
-          {/* دکمه ریست */}
-          <TouchableOpacity
-            style={[styles.resetButton, themeStyles.resetButton]}
-            onPress={resetAudio}
-          >
-            <Text style={styles.resetButtonText}>↺</Text>
-          </TouchableOpacity>
+    {/* ردیف پایین: پروگرس بار */}
+    <View style={styles.bottomRow}>
+      <View style={styles.progressWrapper} ref={progressBarRef}>
+        <View style={[styles.progressBar, themeStyles.progressBar]}>
+          <View style={[styles.progressFill, themeStyles.progressFill, { width: `${progressPercent}%` }]} />
         </View>
-
-        <Text style={[styles.timeText, themeStyles.timeText]}>{formatTime(duration)}</Text>
-      </View>
-
-      {/* ردیف پایین: پروگرس بار */}
-      <View style={styles.bottomRow}>
-        <View style={styles.progressWrapper} ref={progressBarRef}>
-          <View style={[styles.progressBar, themeStyles.progressBar]}>
-            <View style={[styles.progressFill, themeStyles.progressFill, { width: `${progressPercent}%` }]} />
-          </View>
-
-          <View
-            style={[
-              styles.progressHandle,
-              themeStyles.progressHandle,
-              { left: `${progressPercent}%` }
-            ]}
-            {...panResponder.panHandlers}
-          />
-        </View>
-      </View>
-
-      {/* وضعیت پخش */}
-      <View style={styles.statusRow}>
-        <Text style={[styles.statusText, themeStyles.timeText]}>
-          {isPlaying ? '🔊 در حال پخش' : '⏸️ متوقف شده'} | سرعت: {playbackRate}x
-        </Text>
+        <View style={[styles.progressHandle, themeStyles.progressHandle, { left: `${progressPercent}%` }]} {...panResponder.panHandlers} />
       </View>
     </View>
-  );
+
+    {/* ❌ حذف: وضعیت پخش */}
+  </View>
+);
 };
 
 const formatTime = (millis) => {
@@ -400,8 +365,8 @@ const formatTime = (millis) => {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 15,
-    paddingVertical: 10,
-    minHeight: 140,
+    paddingVertical: 8,
+    minHeight: 80,
   },
   prayerInfoRow: {
     marginBottom: 8,
@@ -427,7 +392,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
   },
   statusRow: {
     alignItems: 'center',

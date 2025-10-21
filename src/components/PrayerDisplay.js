@@ -439,26 +439,8 @@ const getDynamicStyles = () => {
 
 return (
   <View style={dynamicStyles.container}>
-    {/* نمایش وضعیت توسعه‌دهنده */}
-    {IS_DEVELOPER_MODE && !isSyncMode && (
-      <View style={styles.developerBanner}>
-        <Text style={styles.developerBannerText}>
-          🔧 حالت توسعه‌دهنده - کلیک روی متن برای ثبت تایماستامپ
-        </Text>
-        <Text style={styles.developerBannerSubText}>
-          دعای فعلی: {getPrayerById(currentPrayerId).title}
-        </Text>
-      </View>
-    )}
-
-    {isSyncMode && (
-      <View style={styles.syncModeBanner}>
-        <Text style={styles.syncModeBannerText}>
-          🔗 حالت پخش همگام فعال - کلیک برای پخش از زمان ذخیره شده
-        </Text>
-      </View>
-    )}
-
+    {/* ❌ حذف تمام بنرهای وضعیت (توسعه/همگام) */}
+    
     <ScrollView
       ref={scrollViewRef}
       style={dynamicStyles.scrollView}
@@ -475,33 +457,20 @@ return (
           activeOpacity={0.7}
           ref={ref => sectionRefs.current[section.sectionIndex] = ref}
         >
-          {/* نشانگر حالت توسعه‌دهنده */}
-          {IS_DEVELOPER_MODE && !isSyncMode && (
-            <Text style={dynamicStyles.developerIndicator}>
-              📍 بخش {section.sectionIndex + 1} - کلیک برای ثبت تایم‌استمپ
-            </Text>
+          {/* ❌ حذف نشانگرهای توسعه/تایم‌استامپ */}
+          
+          {settings.showArabic && (
+            <Text style={dynamicStyles.arabic}>{section.arabic}</Text>
           )}
-
-          {/* نشانگر تایم‌استمپ موجود (برای حالت عادی) */}
-          {!IS_DEVELOPER_MODE && timestamps.find(item => item.sectionIndex === section.sectionIndex) && (
-            <Text style={dynamicStyles.timestampIndicator}>
-              ⏱️ {formatTime(timestamps.find(item => item.sectionIndex === section.sectionIndex).startTime)}
-            </Text>
+          
+          {settings.showPersian && (
+            <Text style={dynamicStyles.persian}>{section.persian}</Text>
           )}
-
-          {/* نشانگر در حال پخش */}
-          {currentPlayingSection === section.sectionIndex && (
-            <Text style={dynamicStyles.developerIndicator}>
-              🔄 در حال پخش...
-            </Text>
-          )}
-
-          <Text style={dynamicStyles.arabic}>{section.arabic}</Text>
-          <Text style={dynamicStyles.persian}>{section.persian}</Text>
-
-          {section.sectionIndex < prayerData.length - 1 && (
-            <View style={dynamicStyles.separator} />
-          )}
+<Text style={styles.timeDisplay}>
+  زمان: {timestamps.find(t => t.sectionIndex === section.sectionIndex) ? 
+    formatTime(timestamps.find(t => t.sectionIndex === section.sectionIndex).startTime) : 
+    'ثبت نشده'}
+</Text>
         </TouchableOpacity>
       ))}
     </ScrollView>
@@ -555,7 +524,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     textAlign: 'center'
-  }
+  },
+timestampDisplay: {
+  fontSize: 10,
+  color: '#666',
+  textAlign: 'center',
+  marginTop: 5,
+  fontFamily: 'monospace',
+}
 });
 
 export default PrayerDisplay;

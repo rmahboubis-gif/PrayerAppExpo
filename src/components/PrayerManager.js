@@ -3,6 +3,10 @@ import p1Content from '../assets/prayers/p1/content.js';
 import p1Audio from '../assets/prayers/p1/audio.mp3';
 import p2Content from '../assets/prayers/p2/content.js';
 import p2Audio from '../assets/prayers/p2/audio.mp3';
+import p3Content from '../assets/prayers/p3/content.js';
+import p3Audio from '../assets/prayers/p3/audio.mp3';
+import p4Content from '../assets/prayers/p4/content.js';
+import p4Audio from '../assets/prayers/p4/audio.mp3';
 
 export const PRAYERS = {
   'p1': {
@@ -13,37 +17,38 @@ export const PRAYERS = {
     contentFile: p1Content,
     timestampsFile: 'prayers/p1/timestamps.json'
   },
-  'p2': {
-    id: 'p2',
-    title: 'مناجات شعبانیه',
-    description: 'مناجات امام علی (ع) در ماه شعبان',
-    audioFile: p2Audio,
-    contentFile: p2Content,
-    timestampsFile: 'p2/timestamps.json'
-  },/*
+'p2': {
+  id: 'p2',
+  title: 'مناجات امیرالمومنین', 
+  description: 'مناجات امام علی (ع)',
+  audioFile: p2Audio,
+  contentFile: p2Content,
+  timestampsFile: 'p2/timestamps.json'
+},
   'p3': {
     id: 'p3',
-    title: 'دعای عرفه',
-    description: 'دعای امام حسین (ع) در روز عرفه',
-    audioFile: require('../assets/prayers/p3/audio.mp3'),
-    contentFile: require('../assets/prayers/p3/content.js'),
+    title: 'مناجات شعبانیه',
+    description:'مناجات امام علی علیه‌السلام در ماه شعبان',
+    audioFile: p3Audio,
+    contentFile: p3Content,
     timestampsFile: 'p3/timestamps.json'
   },
   'p4': {
     id: 'p4',
-    title: 'دعای کمیل',
-    description: 'دعای حضرت خضر (ع)',
-    audioFile: require('../assets/prayers/p4/audio.mp3'),
-    contentFile: require('../assets/prayers/p4/content.js'),
+    title: 'دعای عرفه',
+    description: 'دعای امام حسین (ع) در روز عرفه',
+    audioFile: p4Audio,
+    contentFile: p4Content,
     timestampsFile: 'p4/timestamps.json'
-  },
-  'p5': {
-    id: 'p5',
-    title: 'دعای توسل',
-    description: 'دعای توسل به اهل بیت (ع)',
-    audioFile: require('../assets/prayers/p5/audio.mp3'),
-    contentFile: require('../assets/prayers/p5/content.js'),
-    timestampsFile: 'p5/timestamps.json'
+  }
+/*
+'p4': {
+    id: 'p4',
+    title: 'دعای عرفه',
+    description: 'دعای امام حسین (ع) در روز عرفه',
+    audioFile: p4Audio,
+    contentFile: p4Content,
+    timestampsFile: 'p4/timestamps.json'
   }*/
 };
 
