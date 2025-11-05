@@ -1,0 +1,36 @@
+name: Final APK Build
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        registry-url: https://registry.npmjs.org/
+        
+    - name: Install dependencies
+      run: |
+        npm config set registry https://registry.npmjs.org/
+        npm cache clean --force
+        npm install --legacy-peer-deps
+        
+    - name: Build APK with EAS
+      run: |
+        npm install -g @expo/eas-cli
+        npx expo install
+        eas build --platform android --non-interactive
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: prayer-app
+        path: "*.apk"
