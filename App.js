@@ -1,289 +1,388 @@
-import React, { useState , useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import PrayerDisplay from './src/components/PrayerDisplay';
 import Settings from './src/components/Settings';
 import VoicePlayer from './src/components/VoicePlayer';
 import { getAllPrayers } from './src/components/PrayerManager';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Modal, BackHandler, Alert, Animated } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Modal, BackHandler, Alert } from 'react-native';
 import { SettingsManager } from './src/components/SettingsManager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Helper function to find section by time
+const findSectionByTime = (currentTime, timestamps) => {
+  if (!timestamps || timestamps.length === 0) return { index: 0 };
+  
+  const sortedTimestamps = [...timestamps].sort((a, b) => a.startTime - b.startTime);
+
+  for (let i = 0; i < sortedTimestamps.length; i++) {
+    const currentSection = sortedTimestamps[i];
+    const nextSection = sortedTimestamps[i + 1];
+
+    if (currentTime >= currentSection.startTime &&
+        (!nextSection || currentTime < nextSection.startTime)) {
+      return {
+        index: currentSection.sectionIndex,
+        timestamp: currentSection
+      };
+    }
+  }
+
+  return sortedTimestamps[0] || { index: 0 };
+};
+
+const formatTime = (millis) => {
+  if (!millis) return '0:00';
+  const minutes = Math.floor(millis / 60000);
+  const seconds = Math.floor((millis % 60000) / 1000);
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+};
 
 export default function App() {
+  const [prayerPosition, setPrayerPosition] = useState(0);
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [currentScreen, setCurrentScreen] = useState('main');
   const [selectedPrayer, setSelectedPrayer] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showAbout, setShowAbout] = useState(false); 
+  const [showAbout, setShowAbout] = useState(false);
   const [globalSoundRef, setGlobalSoundRef] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [isSyncMode, setIsSyncMode] = useState(false);
-  const [menuAnim] = useState(new Animated.Value(300));
-const exportTimestampsSimple = async () => {
-  try {
-  const prayerId = currentScreen === 'prayer' ? (selectedPrayer?.id || 'p1') : 'p1';    
-    console.log('🔍 prayerId برای export:', prayerId);
-    console.log('🔍 currentScreen:', currentScreen);    
-    const timestampFile = `${FileSystem.documentDirectory}prayers/${prayerId}/timestamps.json`;
-    console.log('📤 درحال اشتراک‌گذاری فایل:', timestampFile);    
-    const fileInfo = await FileSystem.getInfoAsync(timestampFile);
-    if (fileInfo.exists) {
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(timestampFile, {
-          mimeType: 'application/json',
-          dialogTitle: `ذخیره فایل تایماستامپ - ${prayerId}`
-        });
-      } else {
-        Alert.alert('خطا', 'قابلیت اشتراک‌گذاری در دسترس نیست');
-        }
+  const [timestamps, setTimestamps] = useState([]);
+
+  const [settings, setSettings] = useState({
+    fontFamily: 'System',
+    theme: 'light',
+    arabicSize: 22,
+    persianSize: 16,
+    lineHeight: 1.8,
+    arabicBold: true,
+    persianBold: false,
+    isSyncMode: true,
+    showArabic: true,
+    showPersian: true,
+    heightVersion: 1
+  });
+
+  // Load settings on app start
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    const savedSettings = await SettingsManager.loadSettings();
+    if (savedSettings) {
+      setSettings(savedSettings);
     } else {
-      Alert.alert('اطلاع', `فایل تایماستامپ برای دعای ${prayerId} وجود ندارد`);
-      console.log('❌ فایل تایماستامپ وجود ندارد:', timestampFile);
+      const defaultSettings = {
+        fontFamily: 'System',
+        theme: 'light',
+        arabicSize: 22,
+        persianSize: 16,
+        lineHeight: 1.8,
+        arabicBold: true,
+        persianBold: false,
+        isSyncMode: true,
+        showArabic: true,
+        showPersian: true
+      };
+      setSettings(defaultSettings);
+      await SettingsManager.saveSettings(defaultSettings);
     }
-  } catch (error) {
-    console.error('❌ خطا در export:', error);
-    Alert.alert('خطا', 'مشکلی در اشتراک‌گذاری فایل پیش آمد');
-  }
-};
+  };
 
+  // Save prayer state when exiting prayer
+  const savePrayerState = async (prayerId, state) => {
+    try {
+      console.log('💾 Saving to AsyncStorage:', prayerId, state);
+      await AsyncStorage.setItem(`@prayer_state_${prayerId}`, JSON.stringify(state));
+      console.log('✅ Save successful');
+    } catch (error) {
+      console.error('❌ Save error:', error);
+    }
+  };
 
-const [settings, setSettings] = useState({
-  fontFamily: 'System',
-  theme: 'light',
-  arabicSize: 22,
-  persianSize: 16,
-  lineHeight: 1.8,
-  arabicBold: true,
-  persianBold: false,
-  isSyncMode: true
-});
+  // Load prayer state when entering prayer
+  const loadPrayerState = async (prayerId) => {
+    try {
+      const stateJson = await AsyncStorage.getItem(`@prayer_state_${prayerId}`);
+      return stateJson ? JSON.parse(stateJson) : null;
+    } catch (error) {
+      console.error('Error loading prayer state:', error);
+      return null;
+    }
+  };
 
-useEffect(() => {
-  loadSettings();
-}, []);
+  // Handle back button press
+const handleBack = async () => {
+  console.log('🔙 handleBack called', {
+    currentScreen,
+    selectedPrayer: selectedPrayer?.id,
+    prayerPosition,
+    currentSectionIndex
+  });
 
-const loadSettings = async () => {
-  const savedSettings = await SettingsManager.loadSettings();
-  if (savedSettings) {
-    setSettings(savedSettings);
-  }
-};
+  if (currentScreen === 'prayer' && selectedPrayer) {
+    let finalPosition = prayerPosition;
 
-// موقع تغییر تنظیمات ذخیره کن
-const handleSettingsChange = (newSettings) => {
-  setSettings(newSettings);
-  SettingsManager.saveSettings(newSettings);
-};
-
-  React.useEffect(() => {
-      // این useEffect جدید رو بعد از BackHandler اضافه کنید
-
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (showAbout) {
-        setShowAbout(false);
-        return true;
-      }
-      if (showSettings) {
-        setShowSettings(false);
-        return true;
-      }
-      if (showMenu) {
-        setShowMenu(false);
-        return true;
-      }
-      if (showExitConfirm) {
-        setShowExitConfirm(false);
-        return true;
-      }
-
-      if (currentScreen !== 'main') {
-        setCurrentScreen('main');
-        setSelectedPrayer(null);
-        if (globalSoundRef) {
-          globalSoundRef.stopAsync();
+    // قطع صوت هنگام خروج
+    if (globalSoundRef) {
+      try {
+        const status = await globalSoundRef.getStatusAsync();
+        if (status.isLoaded) {
+          finalPosition = status.positionMillis;
+          await globalSoundRef.stopAsync(); // 🔥 قطع صوت
+          await globalSoundRef.unloadAsync(); // 🔥 آزاد کردن منابع
+          console.log('🎵 Audio stopped and unloaded in handleBack');
         }
-        return true;
+      } catch (error) {
+        console.error('Error stopping audio:', error);
       }
+    }
 
-      setShowExitConfirm(true);
-      return true;
+    const currentState = {
+      position: finalPosition,
+      sectionIndex: currentSectionIndex
+    };
+
+    console.log('💾 Saving position in handleBack:', {
+      prayer: selectedPrayer.id,
+      position: finalPosition,
+      sectionIndex: currentSectionIndex
     });
 
-    return () => backHandler.remove();
-  }, [currentScreen, showMenu, showSettings, showAbout, showExitConfirm, globalSoundRef]);
-
-// این useEffect جدید رو بعد از BackHandler اضافه کنید
-useEffect(() => {
-  if (showMenu) {
-    // منو باز میشه - از راست میاد
-    Animated.spring(menuAnim, {
-      toValue: 0,
-      tension: 50,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
-  } else {
-    // منو بسته میشه - به راست میره
-    Animated.spring(menuAnim, {
-      toValue: 300,
-      tension: 50,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
+    await savePrayerState(selectedPrayer.id, currentState);
   }
-}, [showMenu, menuAnim]); // فقط به showMenu و menuAnim وابسته است
 
+  setCurrentScreen('main');
+  setSelectedPrayer(null);
+  setCurrentSectionIndex(0);
+  setGlobalSoundRef(null); // 🔥 پاک کردن رفرنس
+};
 
-
-  const openMenu = () => {
-    setShowMenu(true);
+  // Load timestamps for prayer
+  const loadTimestampsForPrayer = async (prayerId) => {
+    try {
+      console.log('📊 Loading timestamps for:', prayerId);
+      setTimestamps([]); // Empty for now
+    } catch (error) {
+      console.error('❌ Error loading timestamps:', error);
+      setTimestamps([]);
+    }
   };
 
-  const closeMenu = () => {
-    setShowMenu(false);
+  // Handle settings change
+  const handleSettingsChange = (newSettings) => {
+    console.log('🔄 Settings changed:', newSettings);
+    setSettings(newSettings);
+    SettingsManager.saveSettings(newSettings);
   };
+
+  // Back handler
+// Back handler
+useEffect(() => {
+  const backHandler = BackHandler.addEventListener('hardwareBackPress', async () => { // async اضافه شد
+    if (showAbout) {
+      setShowAbout(false);
+      return true;
+    }
+    if (showSettings) {
+      setShowSettings(false);
+      return true;
+    }
+    if (showMenu) {
+      setShowMenu(false);
+      return true;
+    }
+    if (showExitConfirm) {
+      setShowExitConfirm(false);
+      return true;
+    }
+
+    if (currentScreen !== 'main') {
+      await handleBack(); // await اضافه شد
+      return true;
+    }
+
+    setShowExitConfirm(true);
+    return true;
+  });
+
+  return () => backHandler.remove();
+}, [currentScreen, showMenu, showSettings, showAbout, showExitConfirm, handleBack]);
+  // Load prayer state when entering prayer screen
+// 1. وقتی وارد صفحه دعا شدیم، state را لود کن
+useEffect(() => {
+  if (currentScreen === 'prayer' && selectedPrayer) {
+    loadPrayerState(selectedPrayer.id).then(state => {
+      if (state) {
+        console.log('📖 Prayer state loaded:', selectedPrayer.id, state);
+        setCurrentSectionIndex(state.sectionIndex || 0);
+
+        if (state.position && globalSoundRef) {
+          setTimeout(() => {
+            globalSoundRef.setPositionAsync(state.position);
+            setPrayerPosition(state.position);
+          }, 1000);
+        }
+      }
+    });
+
+    loadTimestampsForPrayer(selectedPrayer.id);
+  }
+}, [currentScreen, selectedPrayer]); // globalSoundRef را حذف کنید
+
+// 2. وقتی globalSoundRef آماده شد، موقعیت را تنظیم کن
+useEffect(() => {
+  if (currentScreen === 'prayer' && selectedPrayer && globalSoundRef) {
+    loadPrayerState(selectedPrayer.id).then(state => {
+      if (state && state.position) {
+        setTimeout(() => {
+          globalSoundRef.setPositionAsync(state.position);
+          setPrayerPosition(state.position);
+        }, 1000);
+      }
+    });
+  }
+}, [globalSoundRef, currentScreen, selectedPrayer]);
+
+
+  // Audio position tracking
+  useEffect(() => {
+    if (currentScreen === 'prayer' && selectedPrayer && timestamps.length > 0) {
+      const newSection = findSectionByTime(prayerPosition, timestamps);
+      if (newSection && newSection.index !== currentSectionIndex) {
+        console.log(`🔄 Audio position ${formatTime(prayerPosition)} -> section ${newSection.index}`);
+        setCurrentSectionIndex(newSection.index);
+      }
+    }
+  }, [prayerPosition, currentScreen, selectedPrayer, timestamps, currentSectionIndex]);
 
   const prayers = getAllPrayers();
 
   const menuItems = [
-    { id: 'main', title: 'صفحه اصلی', icon:'🏠' },
-    { id: 'settings', title: 'تنظیمات', icon: '⚙️' },
-    { id: 'export_simple', title: 'خروجی فایل تایم‌استامپ', icon: '📤' },
-    { id: 'about', title: 'درباره برنامه', icon: 'ℹ️' },
-    //{ id: 'sync_mode', title: isSyncMode ? '✅ حالت پخش همگام' : 'حالت پخش همگام', icon: '🔗' },
-  { id: 'contact', title: 'ارتباط با سازنده', icon: '📞' },
+    { id: 'main', title: 'Main Page', icon: '🏠' },
+    { id: 'settings', title: 'Settings', icon: '⚙' },
+    { id: 'about', title: 'About App', icon: 'ℹ' },
   ];
 
-  const handleMenuSelect = (itemId) => {
-    closeMenu();
-    switch(itemId) {
-      case 'main':
-        setCurrentScreen('main');
-        setSelectedPrayer(null);
-        if (globalSoundRef) {
-          globalSoundRef.stopAsync();
-        }
-        break;
-      case 'settings':
-        setShowSettings(true);
-        break;
-     case 'export_simple':
-        if (selectedPrayer) {
-            exportTimestampsSimple(selectedPrayer.id);
-        } else {
-             Alert.alert('اطلاع', 'لطفاً اول یک دعا انتخاب کنید');}
-        break;
-    /* case 'sync_mode':
- 	 setIsSyncMode(!isSyncMode);
- 	 Alert.alert(
-	    'حالت پخش همگام',
-    	isSyncMode ? 'حالت پخش همگام غیرفعال شد' : 'حالت پخش همگام فعال شد\nاکنون با کلیک روی متن، صوت از زمان ذخیره شده پخش می‌شود.',
-    	[{ text: 'متوجه شدم' }]
-  	);
- 	 break;*/
-      case 'about':
-        setShowAbout(true);
-        break;
-      default:
-        break;
-    }
-  };
-const renderExitConfirm = () => {
-  const themeStyles = getThemeStyles();
+const handleMenuSelect = async (itemId) => {
+  setShowMenu(false);
   
-  return (
-    <Modal
-      visible={showExitConfirm}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowExitConfirm(false)}
-    >
-      <View style={styles.settingsOverlay}>
-        <View style={[styles.settingsContainer, themeStyles.container]}>
-          <Text style={[styles.settingsTitle, themeStyles.headerTitle]}>
-            خروج از برنامه
-          </Text>
-          
-          <Text style={[styles.settingsMessage, themeStyles.menuText]}>
-            آیا مطمئن هستید که می‌خواهید از برنامه خارج شوید؟
-          </Text>
+  // اگر در صفحه دعا هستیم و به صفحه اصلی می‌رویم، handleBack را صدا بزن
+  if (currentScreen === 'prayer' && itemId === 'main') {
+    await handleBack();
+    return; // 🔥 این خط را اضافه کنید - بعد از handleBack برگرد
+  }
+  
+  switch(itemId) {
+    case 'main':
+      setCurrentScreen('main');
+      setSelectedPrayer(null);
+      if (globalSoundRef) {
+        globalSoundRef.stopAsync();
+      }
+      break;
+    case 'settings':
+      setShowSettings(true);
+      break;
+    case 'about':
+      setShowAbout(true);
+      break;
+    default:
+      break;
+  }
+};
 
-          <View style={styles.settingsButtons}>
-            <TouchableOpacity 
-              style={[styles.settingsButton, themeStyles.cancelButton]}
-              onPress={() => setShowExitConfirm(false)}
-            >
-              <Text style={[styles.settingsButtonText, themeStyles.buttonText]}>
-                انصراف
+
+
+
+  const renderExitConfirm = () => {
+    const themeStyles = getThemeStyles();
+
+    return (
+      <Modal
+        visible={showExitConfirm}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowExitConfirm(false)}
+      >
+        <View style={styles.settingsOverlay}>
+          <View style={[styles.settingsContainer, themeStyles.container]}>
+            <Text style={[styles.settingsTitle, themeStyles.headerTitle]}>
+              Exit App
+            </Text>
+            <Text style={[styles.settingsMessage, themeStyles.menuText]}>
+              Are you sure you want to exit the app?
+            </Text>
+            <View style={styles.settingsButtons}>
+              <TouchableOpacity
+                style={[styles.settingsButton, themeStyles.cancelButton]}
+                onPress={() => setShowExitConfirm(false)}
+              >
+                <Text style={[styles.settingsButtonText, themeStyles.buttonText]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.settingsButton, themeStyles.applyButton]}
+                onPress={() => BackHandler.exitApp()}
+              >
+                <Text style={[styles.settingsButtonText, themeStyles.buttonText]}>
+                  Exit
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderAbout = () => {
+    return (
+      <Modal
+        visible={showAbout}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAbout(false)}
+      >
+        <View style={styles.aboutOverlay}>
+          <View style={styles.aboutContainer}>
+            <Text style={styles.aboutTitle}>About App</Text>
+            <ScrollView style={styles.aboutContent}>
+              <Text style={styles.aboutText}>
+                🌙 Spiritual Prayers App
+                {"\n\n"}
+                This app is developed for easy access to religious and spiritual prayers.
+                {"\n\n"}
+                ✨ Features:
+                • Audio playback of prayers
+                • Arabic and Persian text display
+                • Font and size customization
+                • Multiple theme support
+                • Simple and beautiful UI
+                {"\n\n"}
+                📱 Developed with:
+                React Native + Expo
+                {"\n\n"}
+                🙏 We hope this app is useful for you.
+                {"\n\n"}
+                🔄 Version: 1.0.0
               </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.settingsButton, themeStyles.applyButton]}
-              onPress={() => BackHandler.exitApp()}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.aboutCloseButton}
+              onPress={() => setShowAbout(false)}
             >
-              <Text style={[styles.settingsButtonText, themeStyles.buttonText]}>
-                خروج
-              </Text>
+              <Text style={styles.aboutCloseText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
-    </Modal>
-  );
-};
-  const handlePrayerSelect = (prayer) => {
-    setSelectedPrayer(prayer);
-    setCurrentScreen('prayer');
+      </Modal>
+    );
   };
 
-const renderAbout = () => {
-  return (
-    <Modal
-      visible={showAbout}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowAbout(false)}
-    >
-      <View style={styles.aboutOverlay}>
-        <View style={styles.aboutContainer}>
-          <Text style={styles.aboutTitle}>درباره برنامه</Text>
-
-          <ScrollView style={styles.aboutContent}>
-            <Text style={styles.aboutText}>
-              🌙 برنامه دعاهای معنوی
-              {"\n\n"}
-              این برنامه با هدف دسترسی آسان به دعاهای مذهبی و معنوی توسعه داده شده است.
-              {"\n\n"}
-              ✨ ویژگی‌ها:
-              • پخش صوت دعاها
-              • نمایش متن عربی و فارسی
-              • قابلیت تنظیم فونت و سایز
-              • پشتیبانی از تم‌های مختلف
-              • محیط کاربری ساده و زیبا
-              {"\n\n"}
-              📱 توسعه داده شده با:
-              React Native + Expo
-              {"\n\n"}
-              🙏 امیدواریم این برنامه برای شما مفید واقع شود.
-              {"\n\n"}
-              📧 برای ارتباط با توسعه‌دهنده:
-              example@email.com
-              {"\n\n"}
-              🔄 نسخه: ۱.۰.۰
-            </Text>
-          </ScrollView>
-
-          <TouchableOpacity
-            style={styles.aboutCloseButton}
-            onPress={() => setShowAbout(false)}
-          >
-            <Text style={styles.aboutCloseText}>بستن</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
   const getThemeStyles = () => {
     const themeStyles = {
       light: {
@@ -299,6 +398,9 @@ const renderAbout = () => {
         prayerItem: { backgroundColor: '#ffffff' },
         prayerTitle: { color: '#333333' },
         prayerDescription: { color: '#666666' },
+        cancelButton: { backgroundColor: '#6c757d' },
+        applyButton: { backgroundColor: '#007bff' },
+        buttonText: { color: 'white' }
       },
       dark: {
         container: { backgroundColor: '#1a1a1a' },
@@ -313,6 +415,9 @@ const renderAbout = () => {
         prayerItem: { backgroundColor: '#2d2d2d' },
         prayerTitle: { color: '#ffffff' },
         prayerDescription: { color: '#cccccc' },
+        cancelButton: { backgroundColor: '#404040' },
+        applyButton: { backgroundColor: '#0d6efd' },
+        buttonText: { color: 'white' }
       },
       amber: {
         container: { backgroundColor: '#fef9e7' },
@@ -327,63 +432,64 @@ const renderAbout = () => {
         prayerItem: { backgroundColor: '#fcf3cf' },
         prayerTitle: { color: '#333333' },
         prayerDescription: { color: '#666666' },
+        cancelButton: { backgroundColor: '#e6d9a5' },
+        applyButton: { backgroundColor: '#e67e22' },
+        buttonText: { color: 'white' }
       }
     };
 
     return themeStyles[settings.theme] || themeStyles.light;
   };
 
-const renderMenu = () => {
-  const themeStyles = getThemeStyles();
+  const renderMenu = () => {
+    const themeStyles = getThemeStyles();
 
-  return (
-    <Modal
-      visible={showMenu}
-      animationType="fade"
-      transparent={true}
-      onRequestClose={closeMenu}
-    >
-      <View style={styles.menuOverlayLeft}>
-        <TouchableOpacity
-          style={styles.menuOverlayTouchable}
-          activeOpacity={1}
-          onPress={closeMenu}
-        />
-        <View style={[styles.menuContainerLeft, themeStyles.menuContainer]}>
-          <ScrollView style={styles.menuScroll}>
-            <Text style={[styles.menuTitle, themeStyles.menuTitle]}>منوی برنامه</Text>
-            {menuItems.map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.menuItem, themeStyles.menuItem]}
-                onPress={() => handleMenuSelect(item.id)}
-              >
-                <Text style={styles.menuIcon}>{item.icon}</Text>
-                <Text style={[styles.menuText, themeStyles.menuText]}>{item.title}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+    return (
+      <Modal
+        visible={showMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <View style={styles.menuOverlay}>
+          <TouchableOpacity
+            style={styles.menuOverlayTouchable}
+            activeOpacity={1}
+            onPress={() => setShowMenu(false)}
+          />
+          <View style={[styles.menuContainer, themeStyles.menuContainer]}>
+            <ScrollView style={styles.menuScroll}>
+              <Text style={[styles.menuTitle, themeStyles.menuTitle]}>App Menu</Text>
+              {menuItems.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.menuItem, themeStyles.menuItem]}
+                  onPress={() => handleMenuSelect(item.id)}
+                >
+                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                  <Text style={[styles.menuText, themeStyles.menuText]}>{item.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
-  );
-};
+      </Modal>
+    );
+  };
 
   const renderHeader = () => {
     const themeStyles = getThemeStyles();
 
     return (
       <View style={[styles.header, themeStyles.header]}>
-        <TouchableOpacity style={styles.menuButton} onPress={openMenu}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => setShowMenu(true)}>
           <Text style={[styles.menuButtonText, themeStyles.menuButtonText]}>☰</Text>
         </TouchableOpacity>
-
         <Text style={[styles.headerTitle, themeStyles.headerTitle]}>
-          {currentScreen === 'main' ? 'دعاهای معنوی' :
+          {currentScreen === 'main' ? 'Spiritual Prayers' :
            currentScreen === 'prayer' ? selectedPrayer?.title :
-           'برنامه دعا'}
+           'Prayer App'}
         </Text>
-
         <View style={styles.headerPlaceholder} />
       </View>
     );
@@ -391,13 +497,20 @@ const renderMenu = () => {
 
   const renderPrayerHeader = () => (
     <View style={styles.prayerHeader}>
-      <VoicePlayer 
-        settings={settings} 
+      <VoicePlayer
+        settings={settings}
         currentPrayerId={selectedPrayer?.id || 'p1'}
         onSoundRefReady={setGlobalSoundRef}
+        onPositionChange={setPrayerPosition}
       />
     </View>
   );
+
+  const handlePrayerSelect = (prayer) => {
+    setSelectedPrayer(prayer);
+    setCurrentScreen('prayer');
+    setCurrentSectionIndex(0);
+  };
 
   const renderMainScreen = () => {
     const themeStyles = getThemeStyles();
@@ -413,7 +526,9 @@ const renderMenu = () => {
             >
               <View style={styles.prayerContent}>
                 <Text style={[styles.prayerTitle, themeStyles.prayerTitle]}>{prayer.title}</Text>
-                <Text style={[styles.prayerDescription, themeStyles.prayerDescription]}>{prayer.description}</Text>
+                <Text style={[styles.prayerDescription, themeStyles.prayerDescription]}>
+                  {prayer.description}
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -422,48 +537,48 @@ const renderMenu = () => {
     );
   };
 
-const renderPrayerScreen = () => (
-  <View style={styles.prayerContainer}>
-    {renderPrayerHeader()}
-    <PrayerDisplay
-      settings={settings}
-      currentPrayerId={selectedPrayer?.id || 'p1'}
-      soundRef={globalSoundRef}
-      isSyncMode={settings.isSyncMode} // 🔽 از تنظیمات بگیر
-    />
-  </View>
-);
+  const renderPrayerScreen = () => (
+    <View style={styles.prayerContainer}>
+      {renderPrayerHeader()}
+      <PrayerDisplay
+        settings={settings}
+        currentPrayerId={selectedPrayer?.id || 'p1'}
+        soundRef={globalSoundRef}
+        isSyncMode={settings.isSyncMode}
+        currentSectionIndex={currentSectionIndex}
+        onSectionIndexChange={setCurrentSectionIndex}
+      />
+    </View>
+  );
 
   const themeStyles = getThemeStyles();
   return (
-  <View style={[styles.container, themeStyles.container]}>
-    {renderHeader()}
-    <View style={styles.content}>
-      {currentScreen === 'main' && renderMainScreen()}
-      {currentScreen === 'prayer' && renderPrayerScreen()}
-    </View>
-    
-    {renderMenu()}
-    
-    {showSettings && (
-      <View style={styles.settingsOverlay}>
-        <Settings
-          visible={true}
-          onClose={() => setShowSettings(false)}
-          onSettingsChange={setSettings}
-          currentSettings={settings}
-        />
+    <View style={[styles.container, themeStyles.container]}>
+      {renderHeader()}
+      <View style={styles.content}>
+        {currentScreen === 'main' && renderMainScreen()}
+        {currentScreen === 'prayer' && renderPrayerScreen()}
       </View>
-    )}
-    
-    {/* اولویت‌بندی Modalها */}
-    {showExitConfirm && renderExitConfirm()}
-    {showAbout && !showExitConfirm && renderAbout()}
-  </View>
-);
+
+      {renderMenu()}
+
+      {showSettings && (
+        <View style={styles.settingsOverlay}>
+          <Settings
+            visible={true}
+            onClose={() => setShowSettings(false)}
+            onSettingsChange={handleSettingsChange}
+            currentSettings={settings}
+          />
+        </View>
+      )}
+
+      {showExitConfirm && renderExitConfirm()}
+      {showAbout && !showExitConfirm && renderAbout()}
+    </View>
+  );
 }
 
-// استایل‌ها بدون تغییر می‌مونن
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -516,7 +631,6 @@ const styles = StyleSheet.create({
   prayerList: {
     flex: 1
   },
-  
   prayerItem: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -542,160 +656,133 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-
-menuOverlayTouchable: {
-  flex: 1,
-},
-menuOverlayLeft: {
-  flex: 1,
-  flexDirection: 'row',
-  backgroundColor: 'rgba(0,0,0,0.5)',
-},
-menuContainerLeft: {
-  width: 280,
-  height: '100%',
-  position: 'absolute',
-  left: 0, // 🔽 مجبورش کن از چپ بیاد
-  top: 0,
-},
-menuOverlayFade: {
-  flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-menuContainerFade: {
-  width: 280,
-  height: '80%',
-  borderRadius: 15,
-  padding: 20,
-},
-menuScroll: {
-  flex: 1,
-},
-menuTitle: {
-  fontSize: 18,
-  fontWeight: 'bold',
-  textAlign: 'center',
-  marginBottom: 20,
-  padding: 15,
-  borderBottomWidth: 1,
-  borderBottomColor: '#e0e0e0',
-},
-menuItem: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  padding: 15,
-  paddingHorizontal: 20,
-  borderBottomWidth: 1,
-  borderBottomColor: '#f0f0f0',
-},
-menuIcon: {
-  fontSize: 16,
-  marginRight: 10,
-  width: 20,
-  textAlign: 'center',
-},
-menuText: {
-  fontSize: 16,
-},
-
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  menuOverlayTouchable: {
+    flex: 1,
+  },
+  menuContainer: {
+    width: 280,
+    height: '100%',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+  },
+  menuScroll: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuIcon: {
+    fontSize: 16,
+    marginRight: 10,
+    width: 20,
+    textAlign: 'center',
+  },
+  menuText: {
+    fontSize: 16,
+  },
   prayerContainer: {
     flex: 1
-  },  
- 
-
-settingsOverlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-settingsContainer: {
-  width: '85%',
-  borderRadius: 15,
-  padding: 25,
-  maxHeight: '40%',
-},
-settingsTitle: {
-  fontSize: 22,
-  fontWeight: 'bold',
-  textAlign: 'center',
-  marginBottom: 20,
-},
-settingsMessage: {
-  fontSize: 16,
-  textAlign: 'center',
-  marginBottom: 30,
-  lineHeight: 24,
-},
-settingsButtons: {
-  flexDirection: 'row-reverse',
-  justifyContent: 'space-between',
-  gap: 12,
-},
-settingsButton: {
-  flex: 1,
-  padding: 15,
-  borderRadius: 8,
-  alignItems: 'center',
-},
-settingsButtonText: {
-  fontSize: 16,
-  fontWeight: 'bold',
-},
-aboutOverlayTransparent: {
-  flex: 1,
-  backgroundColor: 'transparent', // کاملاً شفاف
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-aboutOverlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  justifyContent: 'center',
-  alignItems: 'center',
-  padding: 20,
-},
-aboutContainer: {
-  width: '90%',
-  height: '80%', // 🔽 ارتفاع بیشتر
-  backgroundColor: 'white',
-  borderRadius: 15,
-  padding: 20,
-},
-aboutContent: {
-  flex: 1,
-  marginBottom: 15,
-},
-aboutTitle: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  textAlign: 'center',
-  marginBottom: 15,
-  borderBottomWidth: 1,
-  paddingBottom: 10,
-  color: '#000',
-},
-aboutText: {
-  fontSize: 16,
-  lineHeight: 25,
-  textAlign: 'right',
-  color: '#000',
-},
-aboutCloseButton: {
-  padding: 12,
-  borderRadius: 8,
-  alignItems: 'center',
-  backgroundColor: '#3498db',
-},
-aboutCloseText: {
-  color: 'white',
-  fontWeight: 'bold',
-  fontSize: 16,
-},
-  exitConfirmExitText: {
+  },
+  settingsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsContainer: {
+    width: '85%',
+    borderRadius: 15,
+    padding: 25,
+    maxHeight: '40%',
+  },
+  settingsTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  settingsMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+    lineHeight: 24,
+  },
+  settingsButtons: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  settingsButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  settingsButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  aboutOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  aboutContainer: {
+    width: '90%',
+    height: '80%',
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+  },
+  aboutContent: {
+    flex: 1,
+    marginBottom: 15,
+  },
+  aboutTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    paddingBottom: 10,
+    color: '#000',
+  },
+  aboutText: {
+    fontSize: 16,
+    lineHeight: 25,
+    textAlign: 'right',
+    color: '#000',
+  },
+  aboutCloseButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#3498db',
+  },
+  aboutCloseText: {
     color: 'white',
-  }
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });
-

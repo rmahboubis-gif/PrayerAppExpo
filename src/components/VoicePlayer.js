@@ -1,29 +1,23 @@
-// src/components/VoicePlayer.js
+import { STATIC_TIMESTAMPS } from './PrayerManager';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, PanResponder, AppState } from 'react-native';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
 import { getPrayerById } from './PrayerManager';
 
-// برای آپدیت مداوم position
-let positionUpdateInterval = null;
-
-const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
+const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady, onPositionChange }) => {
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [appState, setAppState] = useState(AppState.currentState);
-  const [isRecordingMode, setIsRecordingMode] = useState(false);
   const progressBarRef = useRef(null);
-
-  const speedOptions = [0.75, 1.0, 2.5];
+  const [timestamps, setTimestamps] = useState([]);
+  const speedOptions = [1.0, 1.5, 2.0];
 
   useEffect(() => {
     setupAudio();
-
-    // گوش دادن به تغییرات وضعیت برنامه
+    loadTimestamps();
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
@@ -33,50 +27,38 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
   }, [currentPrayerId]);
 
   const cleanupAudio = async () => {
-    stopPositionUpdates();
     if (sound) {
       await sound.unloadAsync();
     }
   };
 
-  const startPositionUpdates = () => {
-    if (positionUpdateInterval) {
-      clearInterval(positionUpdateInterval);
-    }
+const loadTimestamps = async () => {
+  try {
+    const fileName = `prayers/${currentPrayerId}/timestamps.json`;
+    const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+    const fileInfo = await FileSystem.getInfoAsync(fileUri);
 
-    positionUpdateInterval = setInterval(async () => {
-      if (sound && isPlaying) {
-        try {
-          const status = await sound.getStatusAsync();
-          if (status.isLoaded) {
-            setPosition(status.positionMillis);
-            setDuration(status.durationMillis || duration);
-          }
-        } catch (error) {
-          console.error('Error getting playback status:', error);
-        }
-      }
-    }, 500);
-  };
-
-  const stopPositionUpdates = () => {
-    if (positionUpdateInterval) {
-      clearInterval(positionUpdateInterval);
-      positionUpdateInterval = null;
+    if (fileInfo.exists) {
+      const fileContent = await FileSystem.readAsStringAsync(fileUri);
+      const loadedTimestamps = JSON.parse(fileContent);
+      setTimestamps(loadedTimestamps);
+    } else {
+      setTimestamps(STATIC_TIMESTAMPS[currentPrayerId] || []);
     }
-  };
+  } catch (error) {
+    setTimestamps(STATIC_TIMESTAMPS[currentPrayerId] || []);
+  }
+};
 
   const handleAppStateChange = async (nextAppState) => {
     setAppState(nextAppState);
-
     if (nextAppState === 'background' && isPlaying) {
-      console.log('برنامه به پس‌زمینه رفت، صوت ادامه داره...');
+      console.log('App went to background, audio continues...');
     }
   };
 
   const setupAudio = async () => {
     try {
-      // تنظیمات صوتی برای پخش در پس‌زمینه
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
@@ -85,30 +67,27 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
         playThroughEarpieceAndroid: false,
       });
 
-      // اگر صوت قبلی وجود داره، پاکش کن
       if (sound) {
         await sound.unloadAsync();
       }
 
       const prayer = getPrayerById(currentPrayerId);
-      
+
       const { sound: newSound } = await Audio.Sound.createAsync(
         prayer.audioFile,
         {
           shouldPlay: false,
           staysActiveInBackground: true,
+          progressUpdateIntervalMillis: 100,
         },
         onPlaybackStatusUpdate
       );
 
       setSound(newSound);
-      
-      // ارسال ref به parent component
       if (onSoundRefReady) {
         onSoundRefReady(newSound);
       }
 
-      // گرفتن وضعیت اولیه
       const status = await newSound.getStatusAsync();
       if (status.isLoaded) {
         setDuration(status.durationMillis || 0);
@@ -121,20 +100,18 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
 
   const onPlaybackStatusUpdate = (status) => {
     if (status.isLoaded) {
-      setIsPlaying(status.isPlaying);
       setPosition(status.positionMillis);
       setDuration(status.durationMillis || duration);
 
-      if (status.isPlaying && !positionUpdateInterval) {
-        startPositionUpdates();
-      } else if (!status.isPlaying && positionUpdateInterval) {
-        stopPositionUpdates();
+      if (onPositionChange) {
+        onPositionChange(status.positionMillis);
       }
+
+      setIsPlaying(status.isPlaying);
 
       if (status.didJustFinish) {
         setIsPlaying(false);
         setPosition(0);
-        stopPositionUpdates();
       }
     }
   };
@@ -146,11 +123,9 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
       if (isPlaying) {
         await sound.pauseAsync();
         setIsPlaying(false);
-        stopPositionUpdates();
       } else {
         await sound.playAsync();
         setIsPlaying(true);
-        startPositionUpdates();
       }
     } catch (error) {
       console.error('Error playing/pausing audio:', error);
@@ -164,7 +139,6 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
       const currentIndex = speedOptions.indexOf(playbackRate);
       const nextIndex = (currentIndex + 1) % speedOptions.length;
       const nextRate = speedOptions[nextIndex];
-
       await sound.setRateAsync(nextRate, true);
       setPlaybackRate(nextRate);
     } catch (error) {
@@ -172,48 +146,95 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
     }
   };
 
-  const seekForward = async () => {
-    if (!sound || !duration) return;
+// تغییر این دو تابع:
+const seekForward = async () => {
+  if (!sound || timestamps.length === 0) return;
 
-    try {
-      const newPosition = Math.min(
-        duration,
-        position + 10000 // 10 ثانیه جلو
-      );
-      await sound.setPositionAsync(newPosition);
-      setPosition(newPosition);
-    } catch (error) {
-      console.error('Error seeking forward:', error);
+  try {
+    // پیدا کردن بخش فعلی
+    const currentTimestamp = timestamps.find(t => 
+      position >= t.startTime && 
+      (timestamps[timestamps.indexOf(t) + 1] ? position < timestamps[timestamps.indexOf(t) + 1].startTime : true)
+    );
+    
+    const currentIndex = currentTimestamp ? timestamps.indexOf(currentTimestamp) : 0;
+    const nextIndex = currentIndex + 1;
+    
+    if (timestamps[nextIndex]) {
+      await sound.setPositionAsync(timestamps[nextIndex].startTime);
+      setPosition(timestamps[nextIndex].startTime);
+      if (onPositionChange) onPositionChange(timestamps[nextIndex].startTime);
     }
-  };
+  } catch (error) {
+    console.error('Error seeking forward:', error);
+  }
+};
 
-  const seekBackward = async () => {
-    if (!sound) return;
+const seekBackward = async () => {
+  if (!sound || timestamps.length === 0) return;
 
-    try {
-      const newPosition = Math.max(
-        0,
-        position - 10000 // 10 ثانیه عقب
-      );
-      await sound.setPositionAsync(newPosition);
-      setPosition(newPosition);
-    } catch (error) {
-      console.error('Error seeking backward:', error);
+  try {
+    // پیدا کردن بخش فعلی
+    const currentTimestamp = timestamps.find(t => 
+      position >= t.startTime && 
+      (timestamps[timestamps.indexOf(t) + 1] ? position < timestamps[timestamps.indexOf(t) + 1].startTime : true)
+    );
+    
+    const currentIndex = currentTimestamp ? timestamps.indexOf(currentTimestamp) : 0;
+    const prevIndex = Math.max(0, currentIndex - 1);
+    
+    if (timestamps[prevIndex]) {
+      await sound.setPositionAsync(timestamps[prevIndex].startTime);
+      setPosition(timestamps[prevIndex].startTime);
+      if (onPositionChange) onPositionChange(timestamps[prevIndex].startTime);
     }
-  };
+  } catch (error) {
+    console.error('Error seeking backward:', error);
+  }
+};
+
 
   const seekAudio = async (progress) => {
     if (!sound || !duration) return;
 
+    console.log(`🎵 [VoicePlayer] User audio scroll: ${progress}%`);
+
     try {
       const newPosition = (progress / 100) * duration;
+      console.log(`🎵 [VoicePlayer] Setting audio position to: ${formatTime(newPosition)}`);
+
       await sound.setPositionAsync(newPosition);
       setPosition(newPosition);
+
+      if (onPositionChange) {
+        onPositionChange(newPosition);
+      }
     } catch (error) {
-      console.error('Error seeking audio:', error);
+      console.error('❌ Error in audio scroll:', error);
     }
   };
 
+/*
+// در VoicePlayer.js - تابع seekAudio:
+const seekAudio = async (progress) => {
+  if (!sound || !duration) return;
+
+  try {
+    const newPosition = (progress / 100) * duration;
+    
+    // 🔥 حتی اگر صوت پلی نمیشه، موقعیت رو تنظیم کن
+    await sound.setPositionAsync(newPosition);
+    setPosition(newPosition);
+
+    // 🔥 همیشه موقعیت رو گزارش بده
+    if (onPositionChange) {
+      onPositionChange(newPosition);
+    }
+  } catch (error) {
+    console.error('❌ Error in audio scroll:', error);
+  }
+};
+*/
   const resetAudio = async () => {
     if (!sound) return;
 
@@ -245,7 +266,6 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
 
   const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
 
-  // استایل‌های داینامیک بر اساس تم
   const getThemeStyles = () => {
     const themeStyles = {
       light: {
@@ -257,11 +277,7 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
         playButton: { backgroundColor: '#007AFF' },
         speedButton: { backgroundColor: '#34C759' },
         seekButton: { backgroundColor: '#FF9500' },
-        resetButton: { backgroundColor: '#8E8E93' },
-        recordButtonActive: { backgroundColor: '#FF3B30' },
-        recordButtonInactive: { backgroundColor: '#C0C0C0' },
-        modeButton: { backgroundColor: '#007AFF' },
-        prayerInfo: { color: '#333333' }
+        resetButton: { backgroundColor: '#8E8E93' }
       },
       dark: {
         container: { backgroundColor: '#2d2d2d' },
@@ -272,11 +288,7 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
         playButton: { backgroundColor: '#4da6ff' },
         speedButton: { backgroundColor: '#2ecc71' },
         seekButton: { backgroundColor: '#e67e22' },
-        resetButton: { backgroundColor: '#666666' },
-        recordButtonActive: { backgroundColor: '#FF3B30' },
-        recordButtonInactive: { backgroundColor: '#666666' },
-        modeButton: { backgroundColor: '#4da6ff' },
-        prayerInfo: { color: '#ffffff' }
+        resetButton: { backgroundColor: '#666666' }
       },
       amber: {
         container: { backgroundColor: '#fcf3cf' },
@@ -287,78 +299,57 @@ const VoicePlayer = ({ settings, currentPrayerId = 'p1', onSoundRefReady }) => {
         playButton: { backgroundColor: '#e67e22' },
         speedButton: { backgroundColor: '#27ae60' },
         seekButton: { backgroundColor: '#d35400' },
-        resetButton: { backgroundColor: '#bdc3c7' },
-        recordButtonActive: { backgroundColor: '#FF3B30' },
-        recordButtonInactive: { backgroundColor: '#e6d9a5' },
-        modeButton: { backgroundColor: '#e67e22' },
-        prayerInfo: { color: '#333333' }
+        resetButton: { backgroundColor: '#bdc3c7' }
       }
     };
-
     return themeStyles[settings.theme] || themeStyles.light;
   };
 
   const themeStyles = getThemeStyles();
 
-return (
-  <View style={[styles.container, themeStyles.container]}>
-    {/* ❌ حذف: اطلاعات دعای فعلی */}
-    
-    {/* ردیف بالا: اعداد و دکمه‌ها */}
-    <View style={styles.topRow}>
-      <Text style={[styles.timeText, themeStyles.timeText]}>{formatTime(position)}</Text>
-
-      <View style={styles.buttonsContainer}>
-        {/* دکمه عقب ۱۰ ثانیه */}
-        <TouchableOpacity style={[styles.seekButton, themeStyles.seekButton]} onPress={seekBackward}>
-          <Text style={styles.seekButtonText}>⏪</Text>
-        </TouchableOpacity>
-
-        {/* دکمه تغییر سرعت */}
-        <TouchableOpacity style={[styles.speedButton, themeStyles.speedButton]} onPress={cyclePlaybackRate}>
-          <Text style={styles.speedButtonText}>{playbackRate}x</Text>
-        </TouchableOpacity>
-
-        {/* دکمه پلی/پاز */}
-        <TouchableOpacity style={[styles.playButton, themeStyles.playButton]} onPress={togglePlayPause}>
-          <Text style={styles.playIcon}>{isPlaying ? '❚❚' : '▶'}</Text>
-        </TouchableOpacity>
-
-        {/* دکمه جلو ۱۰ ثانیه */}
-        <TouchableOpacity style={[styles.seekButton, themeStyles.seekButton]} onPress={seekForward}>
-          <Text style={styles.seekButtonText}>⏩</Text>
-        </TouchableOpacity>
-
-        {/* دکمه ریست */}
-        <TouchableOpacity style={[styles.resetButton, themeStyles.resetButton]} onPress={resetAudio}>
-          <Text style={styles.resetButtonText}>↺</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={[styles.timeText, themeStyles.timeText]}>{formatTime(duration)}</Text>
-    </View>
-
-    {/* ردیف پایین: پروگرس بار */}
-    <View style={styles.bottomRow}>
-      <View style={styles.progressWrapper} ref={progressBarRef}>
-        <View style={[styles.progressBar, themeStyles.progressBar]}>
-          <View style={[styles.progressFill, themeStyles.progressFill, { width: `${progressPercent}%` }]} />
+  return (
+    <View style={[styles.container, themeStyles.container]}>
+      <View style={styles.topRow}>
+        <Text style={[styles.timeText, themeStyles.timeText]}>{formatTime(position)}</Text>
+        <View style={styles.buttonsContainer}>
+<TouchableOpacity style={[styles.seekButton, themeStyles.seekButton]} onPress={seekBackward}>
+  <Text style={styles.seekButtonText}>⏪</Text>
+</TouchableOpacity>          
+          <TouchableOpacity style={[styles.playButton, themeStyles.playButton]} onPress={togglePlayPause}>
+            <Text style={styles.playIcon}>{isPlaying ? '❚❚' : '▶'}</Text>
+          </TouchableOpacity>
+          
+<TouchableOpacity style={[styles.seekButton, themeStyles.seekButton]} onPress={seekForward}>
+  <Text style={styles.seekButtonText}>⏩</Text>
+</TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.speedButton, themeStyles.speedButton]} onPress={cyclePlaybackRate}>
+            <Text style={styles.speedButtonText}>{playbackRate}x</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.resetButton, themeStyles.resetButton]} onPress={resetAudio}>
+            <Text style={styles.resetButtonText}>↺</Text>
+          </TouchableOpacity>
         </View>
-        <View style={[styles.progressHandle, themeStyles.progressHandle, { left: `${progressPercent}%` }]} {...panResponder.panHandlers} />
+        <Text style={[styles.timeText, themeStyles.timeText]}>{formatTime(duration)}</Text>
+      </View>
+
+      <View style={styles.bottomRow}>
+        <View style={styles.progressWrapper} ref={progressBarRef}>
+          <View style={[styles.progressBar, themeStyles.progressBar]}>
+            <View style={[styles.progressFill, themeStyles.progressFill, { width: `${progressPercent}%` }]} />
+          </View>
+          <View style={[styles.progressHandle, themeStyles.progressHandle, { left: `${progressPercent}%` }]} {...panResponder.panHandlers} />
+        </View>
       </View>
     </View>
-
-    {/* ❌ حذف: وضعیت پخش */}
-  </View>
-);
+  );
 };
 
 const formatTime = (millis) => {
   if (!millis) return '0:00';
-
   const minutes = Math.floor(millis / 60000);
   const seconds = Math.floor((millis % 60000) / 1000);
-
   return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 };
 
@@ -367,15 +358,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 8,
     minHeight: 80,
-  },
-  prayerInfoRow: {
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  prayerInfo: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'center',
   },
   topRow: {
     flexDirection: 'row',
@@ -393,58 +375,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusRow: {
-    alignItems: 'center',
-    marginTop: 4,
-  },
   playButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  speedButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  speedButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   seekButton: {
-    width: 32,
+    paddingHorizontal: 8,
     height: 32,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   resetButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 4,
   },
   playIcon: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 1,
   },
   speedButtonText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   seekButtonText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   resetButtonText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   timeText: {
@@ -452,10 +429,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     width: 45,
     textAlign: 'center',
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   progressWrapper: {
     width: '100%',
@@ -465,13 +438,13 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     width: '100%',
-    height: 4,
-    borderRadius: 2,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
   },
   progressHandle: {
     position: 'absolute',
@@ -479,7 +452,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    top: 2,
+    top: 0,
     marginLeft: -10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

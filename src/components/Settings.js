@@ -1,6 +1,6 @@
-// src/components/Settings.js
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert } from 'react-native';
+import { SettingsManager } from './SettingsManager';
 
 const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
   const [settings, setSettings] = useState(currentSettings);
@@ -18,6 +18,7 @@ const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
     { name: '🟠 کهربایی', value: 'amber' }
   ];
 
+  // Get theme styles - only comments in English
   const getThemeStyles = () => {
     const themeStyles = {
       light: {
@@ -39,7 +40,7 @@ const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
         toggleText: { color: 'white' },
         resetButton: { backgroundColor: '#dc3545' },
         applyButton: { backgroundColor: '#28a745' },
-	cancelButton: { backgroundColor: '#6c757d' },
+        cancelButton: { backgroundColor: '#6c757d' },
         buttonText: { color: 'white' }
       },
       dark: {
@@ -61,7 +62,7 @@ const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
         toggleText: { color: 'white' },
         resetButton: { backgroundColor: '#dc3545' },
         applyButton: { backgroundColor: '#198754' },
-	cancelButton: { backgroundColor: '#6c757d' },
+        cancelButton: { backgroundColor: '#6c757d' },
         buttonText: { color: 'white' }
       },
       amber: {
@@ -83,7 +84,7 @@ const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
         toggleText: { color: '#664d03' },
         resetButton: { backgroundColor: '#dc3545' },
         applyButton: { backgroundColor: '#198754' },
-	cancelButton: { backgroundColor: '#6c757d' },
+        cancelButton: { backgroundColor: '#6c757d' },
         buttonText: { color: 'white' }
       }
     };
@@ -91,11 +92,17 @@ const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
     return themeStyles[currentSettings.theme] || themeStyles.light;
   };
 
-  const applySettings = () => {
-    onSettingsChange(settings);
-    onClose();
+  // Apply settings function
+const applySettings = () => {
+  const newSettings = {
+    ...settings,
+    heightVersion: settings.heightVersion + 1 // version را افزایش دهید
   };
-
+  onSettingsChange(newSettings);
+  SettingsManager.saveSettings(newSettings);
+  onClose();
+};
+  // Reset to defaults
   const resetToDefaults = async () => {
     const defaults = {
       fontFamily: 'System',
@@ -113,15 +120,17 @@ const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
   };
 
   const themeStyles = getThemeStyles();
+  
   return (
-    <Modal   visible={visible}  animationType="fade"  transparent={true}  onRequestClose={onClose} >
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
       <View style={[styles.modalContainer, themeStyles.modalContainer]}>
         <View style={[styles.container, themeStyles.innerContainer]}>
+          {/* UI texts remain in Persian */}
           <Text style={[styles.header, themeStyles.header]}>⚙️ تنظیمات نمایش</Text>
 
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
 
-            {/* حالت پخش */}
+            {/* Playback Mode - Persian UI */}
             <View style={[styles.section, themeStyles.section]}>
               <Text style={[styles.sectionTitle, themeStyles.sectionTitle]}>🎵 حالت پخش</Text>
               <TouchableOpacity
@@ -136,13 +145,13 @@ const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
                 </Text>
               </TouchableOpacity>
               <Text style={styles.toggleDescription}>
-                {settings.isSyncMode 
-                  ? 'کلیک روی متن، صوت را از زمان ذخیره شده پخش می‌کند' 
-                  : 'کلیک روی متن، تایم‌استامپ جدید ثبت می‌کند'}
+                {settings.isSyncMode
+                  ? 'کلیک روی متن، صوت را از زمان ذخیره شده پخش میکند'
+                  : 'کلیک روی متن، تایماستامپ جدید ثبت میکند'}
               </Text>
             </View>
 
-            {/* نمایش متن */}
+            {/* Text Display - Persian UI */}
             <View style={[styles.section, themeStyles.section]}>
               <Text style={[styles.sectionTitle, themeStyles.sectionTitle]}>👁️ نمایش متن</Text>
               <View style={styles.toggleRow}>
@@ -151,22 +160,20 @@ const Settings = ({ visible, onClose, onSettingsChange, currentSettings }) => {
                     styles.toggleSmall,
                     settings.showArabic ? themeStyles.toggleActive : themeStyles.toggle
                   ]}
+                  onPress={() => {
+                    const newShowArabic = !settings.showArabic;
+                    const newShowPersian = settings.showPersian;
 
-onPress={() => {
-  const newShowArabic = !settings.showArabic;
-  const newShowPersian = settings.showPersian;
+                    if (!newShowArabic && !newShowPersian) {
+                      Alert.alert('توجه', 'حداقل یک زبان باید فعال باشد');
+                      return;
+                    }
 
-  // اگر هر دو غیرفعال میشن، جلوگیری کن
-  if (!newShowArabic && !newShowPersian) {
-    Alert.alert('توجه', 'حداقل یک زبان باید فعال باشد');
-    return;
-  }
-
-  setSettings({...settings, showArabic: newShowArabic});
-}}
+                    setSettings({...settings, showArabic: newShowArabic});
+                  }}
                 >
                   <Text style={[styles.toggleTextSmall, themeStyles.toggleText]}>
-                    {settings.showArabic ? '✅' : '☑️'} عربی
+                    {settings.showArabic ? '✅' : '☑'} عربی
                   </Text>
                 </TouchableOpacity>
 
@@ -175,26 +182,26 @@ onPress={() => {
                     styles.toggleSmall,
                     settings.showPersian ? themeStyles.toggleActive : themeStyles.toggle
                   ]}
-                 onPress={() => {
-  const newShowPersian = !settings.showPersian;
-  const newShowArabic = settings.showArabic;
-  // اگر هر دو غیرفعال میشن، جلوگیری کن
-  if (!newShowPersian && !newShowArabic) {
-    Alert.alert('توجه', 'حداقل یک زبان باید فعال باشد');
-    return;
-  }
+                  onPress={() => {
+                    const newShowPersian = !settings.showPersian;
+                    const newShowArabic = settings.showArabic;
+                    
+                    if (!newShowPersian && !newShowArabic) {
+                      Alert.alert('توجه', 'حداقل یک زبان باید فعال باشد');
+                      return;
+                    }
 
-  setSettings({...settings, showPersian: newShowPersian});
-}}
+                    setSettings({...settings, showPersian: newShowPersian});
+                  }}
                 >
                   <Text style={[styles.toggleTextSmall, themeStyles.toggleText]}>
-                    {settings.showPersian ? '✅' : '☑️'} فارسی
+                    {settings.showPersian ? '✅' : '☑'} فارسی
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* انتخاب فونت */}
+            {/* Font Selection - Persian UI */}
             <View style={[styles.section, themeStyles.section]}>
               <Text style={[styles.sectionTitle, themeStyles.sectionTitle]}>🔤 فونت متن</Text>
               <View style={styles.optionsRow}>
@@ -221,7 +228,7 @@ onPress={() => {
               </View>
             </View>
 
-            {/* انتخاب تم */}
+            {/* Theme Selection - Persian UI */}
             <View style={[styles.section, themeStyles.section]}>
               <Text style={[styles.sectionTitle, themeStyles.sectionTitle]}>🎨 تم رنگی</Text>
               <View style={styles.optionsRow}>
@@ -248,10 +255,10 @@ onPress={() => {
               </View>
             </View>
 
-            {/* سایز متن */}
+            {/* Text Size - Persian UI */}
             <View style={[styles.section, themeStyles.section]}>
               <Text style={[styles.sectionTitle, themeStyles.sectionTitle]}>📏 سایز متن</Text>
-              
+
               <View style={styles.sizeControl}>
                 <Text style={[styles.sizeLabel, themeStyles.sectionTitle]}>عربی</Text>
                 <View style={styles.sizeControls}>
@@ -291,7 +298,7 @@ onPress={() => {
               </View>
             </View>
 
-            {/* سبک متن */}
+            {/* Text Style - Persian UI */}
             <View style={[styles.section, themeStyles.section]}>
               <Text style={[styles.sectionTitle, themeStyles.sectionTitle]}>✨ سبک متن</Text>
               <View style={styles.toggleRow}>
@@ -303,10 +310,10 @@ onPress={() => {
                   onPress={() => setSettings({...settings, arabicBold: !settings.arabicBold})}
                 >
                   <Text style={[styles.toggleTextSmall, themeStyles.toggleText]}>
-                    {settings.arabicBold ? '✅' : '☑️'} عربی بولد
+                    {settings.arabicBold ? '✅' : '☑'} عربی بولد
                   </Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                   style={[
                     styles.toggleSmall,
@@ -315,50 +322,52 @@ onPress={() => {
                   onPress={() => setSettings({...settings, persianBold: !settings.persianBold})}
                 >
                   <Text style={[styles.toggleTextSmall, themeStyles.toggleText]}>
-                    {settings.persianBold ? '✅' : '☑️'} فارسی بولد
+                    {settings.persianBold ? '✅' : '☑'} فارسی بولد
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
           </ScrollView>
-<View style={styles.buttons}>
-  <TouchableOpacity
-    style={[styles.cancelButton, themeStyles.cancelButton]}
-    onPress={onClose}
-  >
-    <View style={styles.buttonContent}>
-      <Text style={styles.buttonIcon}>❌</Text>
-      <Text style={[styles.buttonText, themeStyles.buttonText]}>انصراف</Text>
-    </View>
-  </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.resetButton, themeStyles.resetButton]}
-    onPress={resetToDefaults}
-  >
-    <View style={styles.buttonContent}>
-      <Text style={styles.buttonIcon}>🔄</Text>
-      <Text style={[styles.buttonText, themeStyles.buttonText]}>بازنشانی</Text>
-    </View>
-  </TouchableOpacity>
+          <View style={styles.buttons}>
+            <TouchableOpacity
+              style={[styles.cancelButton, themeStyles.cancelButton]}
+              onPress={onClose}
+            >
+              <View style={styles.buttonContent}>
+                <Text style={styles.buttonIcon}>❌</Text>
+                <Text style={[styles.buttonText, themeStyles.buttonText]}>انصراف</Text>
+              </View>
+            </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.applyButton, themeStyles.applyButton]}
-    onPress={applySettings}
-  >
-    <View style={styles.buttonContent}>
-      <Text style={styles.buttonIcon}>💾</Text>
-      <Text style={[styles.buttonText, themeStyles.buttonText]}>ذخیره</Text>
-    </View>
-  </TouchableOpacity>
-</View>
-</View>
-</View>
-</Modal>
-);
+            <TouchableOpacity
+              style={[styles.resetButton, themeStyles.resetButton]}
+              onPress={resetToDefaults}
+            >
+              <View style={styles.buttonContent}>
+                <Text style={styles.buttonIcon}>🔄</Text>
+                <Text style={[styles.buttonText, themeStyles.buttonText]}>بازنشانی</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.applyButton, themeStyles.applyButton]}
+              onPress={applySettings}
+            >
+              <View style={styles.buttonContent}>
+                <Text style={styles.buttonIcon}>💾</Text>
+                <Text style={[styles.buttonText, themeStyles.buttonText]}>ذخیره</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 };
 
+// Styles remain the same...
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
@@ -484,45 +493,45 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     marginTop: 4,
   },
-buttons: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginTop: 20,
-  paddingTop: 20,
-  borderTopWidth: 1,
-  borderTopColor: '#dee2e6',
-},
-buttonContent: {
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-buttonIcon: {
-  fontSize: 16,
-  marginBottom: 4,
-},
-buttonText: {
-  fontWeight: 'bold',
-  fontSize: 12,
-  textAlign: 'center',
-},
-cancelButton: {
-  padding: 12,
-  borderRadius: 8,
-  width: '30%',
-  alignItems: 'center',
-},
-resetButton: {
-  padding: 12,
-  borderRadius: 8,
-  width: '30%', // 🔽 همین
-  alignItems: 'center',
-},
-applyButton: {
-  padding: 12,
-  borderRadius: 8,
-  width: '30%', // 🔽 همین
-  alignItems: 'center',
-}
+  buttons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#dee2e6',
+  },
+  buttonContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonIcon: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  buttonText: {
+    fontWeight: 'bold',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  cancelButton: {
+    padding: 12,
+    borderRadius: 8,
+    width: '30%',
+    alignItems: 'center',
+  },
+  resetButton: {
+    padding: 12,
+    borderRadius: 8,
+    width: '30%',
+    alignItems: 'center',
+  },
+  applyButton: {
+    padding: 12,
+    borderRadius: 8,
+    width: '30%',
+    alignItems: 'center',
+  }
 });
 
 export default Settings;
