@@ -1,7 +1,7 @@
 name: Build Android APK
 
 on: 
-  workflow_dispatch:  # این خط رو درست کردم
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,16 +15,21 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: 18
+        registry-url: https://registry.npmjs.org/
         
-    - name: Install dependencies
+    - name: Install dependencies with retry
       run: |
-        npm install --legacy-peer-deps
+        npm config set registry https://registry.npmjs.org/
+        npm cache clean --force
+        npm install --legacy-peer-deps --no-optional
         
-    - name: Setup Expo and EAS
+    - name: Build with expo
       run: |
-        npm install -g @expo/eas-cli
-        npx expo install expo-updates
+        npx expo install
+        npx expo export --platform android --output-dir ./apk-build
         
-    - name: Build APK
-      run: |
-        eas build --platform android --non-interactive --local
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: prayer-app-apk
+        path: apk-build/*
