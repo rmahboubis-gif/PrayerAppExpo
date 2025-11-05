@@ -1,0 +1,39 @@
+name: Fixed APK Build
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js with clean registry
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        registry-url: https://registry.npmjs.org/
+        
+    - name: Clean npm config and install
+      run: |
+        npm config set registry https://registry.npmjs.org/
+        npm config delete proxy
+        npm config delete https-proxy
+        npm cache clean --force
+        npm install --registry=https://registry.npmjs.org --legacy-peer-deps
+        
+    - name: Build with EAS
+      run: |
+        npm install -g @expo/eas-cli
+        npx expo install
+        eas build --platform android --non-interactive
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: prayer-app-apk
+        path: "*.apk"
+        retention-days: 7
