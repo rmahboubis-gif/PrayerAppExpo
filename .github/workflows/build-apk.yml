@@ -1,0 +1,30 @@
+name: Build Android APK
+
+on: 
+  workflow_dispatch:  # این خط رو درست کردم
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        
+    - name: Install dependencies
+      run: |
+        npm install --legacy-peer-deps
+        
+    - name: Setup Expo and EAS
+      run: |
+        npm install -g @expo/eas-cli
+        npx expo install expo-updates
+        
+    - name: Build APK
+      run: |
+        eas build --platform android --non-interactive --local
